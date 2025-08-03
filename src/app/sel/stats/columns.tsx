@@ -55,6 +55,10 @@ export const columns: ColumnDef<Stat>[] = [
     {
         accessorKey: "Average",
         header: "Average",
+        cell: ({ row }) => {
+            const value = row.getValue("Average") as number;
+            return value ? value.toFixed(3) : "0.000";
+        },
     },
     {
         accessorKey: "Match",
@@ -75,12 +79,20 @@ export const columns: ColumnDef<Stat>[] = [
     {
         accessorFn: (row) => row["Home Avg."],
         id: "homeAvg",
-        header: "Home Avg",
+        header: "Home",
+        cell: ({ row }) => {
+            const value = row.getValue("homeAvg") as number | null;
+            return value !== null ? value.toFixed(3) : "";
+        },
     },
     {
         accessorFn: (row) => row["Away Avg."],
         id: "awayAvg", 
         header: "Away",
+        cell: ({ row }) => {
+            const value = row.getValue("awayAvg") as number | null;
+            return value !== null ? value.toFixed(3) : "";
+        },
     },
     {
         accessorKey: "I",

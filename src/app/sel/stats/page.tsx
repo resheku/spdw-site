@@ -60,9 +60,9 @@ export default function SelStatsPage() {
             <div className="content-area">
                 <h1>stats</h1>
                 <br />
-                <div className="container mx-auto py-10">
-                    <DataTable columns={columns} data={data} />
-                </div>
+            </div>
+            <div className="px-4 py-2 pb-20">
+                <DataTable columns={columns} data={data} />
             </div>
         </>
     )
