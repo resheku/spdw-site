@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { columns, Schedule } from "./columns"
+
+import { columns, Stat } from "./columns"
 import { DataTable } from "./data-table"
 import { useState, useEffect } from 'react';
 
 export default function SelStatsPage() {
-    const [data, setData] = useState<Schedule[]>([]);
+    const [data, setData] = useState<Stat[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
@@ -32,9 +33,6 @@ export default function SelStatsPage() {
 
         fetchData();
     }, []);
-
-    // if (isLoading) return <p>Loading...</p>;
-    // if (!data) return <p>No data available</p>;
 
     return (
         <>
