@@ -31,10 +31,6 @@ export type Stat = {
 
 export const columns: ColumnDef<Stat>[] = [
     {
-        accessorKey: "Season",
-        header: "Season",
-    },
-    {
         accessorKey: "Name",
         header: ({ column }) => {
             return (
@@ -87,7 +83,7 @@ export const columns: ColumnDef<Stat>[] = [
     },
     {
         accessorFn: (row) => row["Away Avg."],
-        id: "awayAvg", 
+        id: "awayAvg",
         header: "Away",
         cell: ({ row }) => {
             const value = row.getValue("awayAvg") as number | null;
@@ -129,5 +125,9 @@ export const columns: ColumnDef<Stat>[] = [
     {
         accessorKey: "Warn",
         header: "Warn",
-    }
+    },
+    {
+        accessorKey: "Season",
+        header: "Season",
+    },
 ]
