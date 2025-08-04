@@ -18,6 +18,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 export default function SelStatsPage() {
     const [data, setData] = useState<Stat[]>([]);
     const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
+    const [availableTeams, setAvailableTeams] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isFilterLoading, setIsFilterLoading] = useState<boolean>(false);
     const searchParams = useSearchParams();
@@ -29,7 +30,13 @@ export default function SelStatsPage() {
         ? seasonsParam.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s))
         : [];
 
-    const fetchData = useCallback(async (seasons: number[] = []) => {
+    // Get selected teams from URL search params
+    const teamsParam = searchParams.get('team');
+    const selectedTeams = teamsParam
+        ? teamsParam.split(',').map(t => t.trim()).filter(t => t.length > 0)
+        : [];
+
+    const fetchData = useCallback(async (seasons: number[] = [], teams: string[] = []) => {
         const isInitialLoad = data.length === 0;
 
         if (isInitialLoad) {
@@ -39,8 +46,16 @@ export default function SelStatsPage() {
         }
 
         try {
-            const seasonsQuery = seasons.length > 0 ? `?season=${seasons.join(',')}` : '';
-            const response = await fetch(`/api/sel/stats${seasonsQuery}`);
+            const queryParams = new URLSearchParams();
+            if (seasons.length > 0) {
+                queryParams.set('season', seasons.join(','));
+            }
+            if (teams.length > 0) {
+                queryParams.set('team', teams.join(','));
+            }
+
+            const queryString = queryParams.toString();
+            const response = await fetch(`/api/sel/stats${queryString ? `?${queryString}` : ''}`);
             const result = await response.json();
             setData(result);
         } catch (error) {
@@ -68,8 +83,25 @@ export default function SelStatsPage() {
         window.history.replaceState({}, '', `?${params.toString()}`);
 
         // Fetch new data
-        fetchData(seasons);
-    }, [searchParams, fetchData]);
+        fetchData(seasons, selectedTeams);
+    }, [searchParams, fetchData, selectedTeams]);
+
+    const handleTeamsChange = useCallback((teams: string[]) => {
+        // Update URL without navigation
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (teams.length > 0) {
+            params.set('team', teams.join(','));
+        } else {
+            params.delete('team');
+        }
+
+        // Update URL without causing page navigation
+        window.history.replaceState({}, '', `?${params.toString()}`);
+
+        // Fetch new data
+        fetchData(selectedSeasons, teams);
+    }, [searchParams, fetchData, selectedSeasons]);
 
     useEffect(() => {
         const fetchAvailableSeasons = async () => {
@@ -84,12 +116,25 @@ export default function SelStatsPage() {
             }
         };
 
+        const fetchAvailableTeams = async () => {
+            try {
+                const response = await fetch('/api/sel/stats/teams');
+                if (response.ok) {
+                    const teams = await response.json();
+                    setAvailableTeams(teams);
+                }
+            } catch (error) {
+                console.error('Error fetching available teams:', error);
+            }
+        };
+
         fetchAvailableSeasons();
+        fetchAvailableTeams();
     }, []);
 
     // Initial data load
     useEffect(() => {
-        fetchData(selectedSeasons);
+        fetchData(selectedSeasons, selectedTeams);
     }, []); // Only run on mount
 
     return (
@@ -116,7 +161,7 @@ export default function SelStatsPage() {
                 </Breadcrumb>
             </div>
             <div className="content-area">
-                <h1>stats</h1>
+                <h1>sel stats</h1>
                 <br />
             </div>
             <div className="px-4 py-2 pb-20">
@@ -131,6 +176,9 @@ export default function SelStatsPage() {
                         availableSeasons={availableSeasons}
                         selectedSeasons={selectedSeasons}
                         onSeasonsChange={handleSeasonsChange}
+                        availableTeams={availableTeams}
+                        selectedTeams={selectedTeams}
+                        onTeamsChange={handleTeamsChange}
                         isLoading={isFilterLoading}
                     />
                 )}

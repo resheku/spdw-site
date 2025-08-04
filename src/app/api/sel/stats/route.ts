@@ -5,36 +5,69 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const seasonsParam = searchParams.get('season');
+        const teamsParam = searchParams.get('team');
 
         let data: any[];
 
+        // Build WHERE conditions based on filters
+        let whereConditions: string[] = [];
+        let queryParams: any[] = [];
+
+        // Handle seasons filter
         if (seasonsParam) {
-            // Parse comma-separated seasons
             const requestedSeasons = seasonsParam.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
 
             if (requestedSeasons.length > 0) {
-                // First, get all available seasons from the database
                 const availableSeasons = await sql`
                     SELECT DISTINCT "Season" 
                     FROM stats 
                     WHERE "Season" IS NOT NULL
                 `;
-
                 const validSeasons = availableSeasons.map(row => row.Season);
-
-                // Filter requested seasons to only include valid ones
                 const filteredSeasons = requestedSeasons.filter(season => validSeasons.includes(season));
 
                 if (filteredSeasons.length > 0) {
-                    // Use safe parameterized query with SQL fragments
-                    data = await sql`
-                        SELECT * FROM stats 
-                        WHERE "Season" = ANY(${filteredSeasons})
-                    `;
-                } else {
-                    // If no valid seasons requested, return empty array
-                    data = [];
+                    whereConditions.push(`"Season" = ANY($${queryParams.length + 1})`);
+                    queryParams.push(filteredSeasons);
                 }
+            }
+        }
+
+        // Handle teams filter
+        if (teamsParam) {
+            const requestedTeams = teamsParam.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+            if (requestedTeams.length > 0) {
+                const availableTeams = await sql`
+                    SELECT DISTINCT "Team" 
+                    FROM stats 
+                    WHERE "Team" IS NOT NULL
+                `;
+                const validTeams = availableTeams.map(row => row.Team);
+                const filteredTeams = requestedTeams.filter(team => validTeams.includes(team));
+
+                if (filteredTeams.length > 0) {
+                    whereConditions.push(`"Team" = ANY($${queryParams.length + 1})`);
+                    queryParams.push(filteredTeams);
+                }
+            }
+        }
+
+        // Build and execute query
+        if (whereConditions.length > 0) {
+            if (queryParams.length === 1) {
+                // Single filter condition
+                if (seasonsParam && !teamsParam) {
+                    data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]})`;
+                } else if (teamsParam && !seasonsParam) {
+                    data = await sql`SELECT * FROM stats WHERE "Team" = ANY(${queryParams[0]})`;
+                } else {
+                    // Both filters
+                    data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
+                }
+            } else if (queryParams.length === 2) {
+                // Both season and team filters
+                data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
             } else {
                 data = await sql`SELECT * FROM stats`;
             }
@@ -42,12 +75,10 @@ export async function GET(request: NextRequest) {
             data = await sql`SELECT * FROM stats`;
         }
 
-        // You need to return a NextResponse object
         return NextResponse.json(data);
     } catch (error) {
         console.error('Database query failed:', error);
 
-        // Return an appropriate error response
         return NextResponse.json(
             {
                 error: 'Failed to fetch schedule data',

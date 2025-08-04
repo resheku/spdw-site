@@ -21,6 +21,9 @@ interface DataTableProps<TData> {
     availableSeasons: number[]
     selectedSeasons: number[]
     onSeasonsChange: (seasons: number[]) => void
+    availableTeams: string[]
+    selectedTeams: string[]
+    onTeamsChange: (teams: string[]) => void
     isLoading?: boolean
 }
 
@@ -30,6 +33,9 @@ export function DataTable<TData extends Record<string, any>>({
     availableSeasons,
     selectedSeasons,
     onSeasonsChange,
+    availableTeams,
+    selectedTeams,
+    onTeamsChange,
     isLoading = false,
 }: DataTableProps<TData>) {
     const [nameFilter, setNameFilter] = React.useState("")
@@ -91,6 +97,18 @@ export function DataTable<TData extends Record<string, any>>({
         onSeasonsChange([])
     }
 
+    const handleTeamToggle = (team: string) => {
+        const newSelectedTeams = selectedTeams.includes(team)
+            ? selectedTeams.filter(t => t !== team)
+            : [...selectedTeams, team]
+
+        onTeamsChange(newSelectedTeams)
+    }
+
+    const clearAllTeams = () => {
+        onTeamsChange([])
+    }
+
     return (
         <div>
             <div className="flex items-center py-4 gap-4">
@@ -100,6 +118,46 @@ export function DataTable<TData extends Record<string, any>>({
                     onChange={(event) => setNameFilter(event.target.value)}
                     className="max-w-sm"
                 />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Teams ({
+                                selectedTeams.length === 0
+                                    ? 'All'
+                                    : selectedTeams.length === 1
+                                        ? selectedTeams[0]
+                                        : selectedTeams.length
+                            })
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Filter by Team</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {selectedTeams.length > 0 && (
+                            <>
+                                <DropdownMenuCheckboxItem
+                                    className="text-red-600"
+                                    checked={false}
+                                    onCheckedChange={clearAllTeams}
+                                >
+                                    Clear all
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
+                        {availableTeams.map((team) => (
+                            <DropdownMenuCheckboxItem
+                                key={team}
+                                className="capitalize"
+                                checked={selectedTeams.includes(team)}
+                                onCheckedChange={() => handleTeamToggle(team)}
+                            >
+                                {team}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="ml-auto">
