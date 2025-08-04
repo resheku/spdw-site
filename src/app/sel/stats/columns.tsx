@@ -23,9 +23,20 @@ export type Stat = {
     X: number;
     F: number;
     Warn: number;
+    rank?: number; // Dynamic rank column
 }
 
-export const columns: Column<Stat>[] = [
+export const columns: Column<Stat & { rank: number }>[] = [
+    {
+        key: "rank",
+        name: "#",
+        sortable: false,
+        resizable: true,
+        width: 70,
+        renderCell: ({ row }) => {
+            return row.rank.toString();
+        },
+    },
     {
         key: "Name",
         name: "Name",

@@ -16,7 +16,7 @@ import {
 import { ChevronDown } from "lucide-react"
 
 interface DataTableProps<TData> {
-    columns: Column<TData>[]
+    columns: Column<TData & { rank: number }>[]
     data: TData[]
     availableSeasons: number[]
     selectedSeasons: number[]
@@ -70,6 +70,14 @@ export function DataTable<TData extends Record<string, any>>({
             return 0
         })
     }, [filteredData, sortColumns])
+
+    // Add rank to sorted data
+    const rankedData = React.useMemo(() => {
+        return sortedData.map((row, index) => ({
+            ...row,
+            rank: index + 1
+        }))
+    }, [sortedData])
 
     const handleSeasonToggle = (season: number) => {
         const newSelectedSeasons = selectedSeasons.includes(season)
@@ -147,7 +155,7 @@ export function DataTable<TData extends Record<string, any>>({
                     <div className={isLoading ? "opacity-50" : ""}>
                         <DataGrid
                             columns={columns}
-                            rows={sortedData}
+                            rows={rankedData}
                             sortColumns={sortColumns}
                             onSortColumnsChange={setSortColumns}
                             rowKeyGetter={(row) => `${row.Name}-${row.Season}-${row.Team}`}
@@ -156,7 +164,7 @@ export function DataTable<TData extends Record<string, any>>({
                                 resizable: true,
                             }}
                             style={{
-                                height: `${Math.max(400, (sortedData.length + 1) * 35 + 40)}px`,
+                                height: `${Math.max(400, (rankedData.length + 1) * 35 + 40)}px`,
                                 '--rdg-border-color': 'hsl(var(--border))',
                                 '--rdg-selection-color': 'hsl(var(--accent))',
                                 '--rdg-background-color': 'hsl(var(--background))',
