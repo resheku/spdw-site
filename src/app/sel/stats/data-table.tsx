@@ -43,7 +43,9 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Filter data based on name filter (client-side filtering for name still)
     const filteredData = React.useMemo(() => {
-        let filtered = data
+        // Ensure data is always an array
+        const safeData = Array.isArray(data) ? data : []
+        let filtered = safeData
 
         // Filter by name
         if (nameFilter) {
@@ -57,9 +59,12 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Sort data
     const sortedData = React.useMemo(() => {
-        if (sortColumns.length === 0) return filteredData
+        // Ensure filteredData is always an array
+        const safeFilteredData = Array.isArray(filteredData) ? filteredData : []
 
-        return [...filteredData].sort((a, b) => {
+        if (sortColumns.length === 0) return safeFilteredData
+
+        return [...safeFilteredData].sort((a, b) => {
             for (const sort of sortColumns) {
                 const { columnKey, direction } = sort
                 const aValue = a[columnKey]
@@ -79,7 +84,10 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Add rank to sorted data
     const rankedData = React.useMemo(() => {
-        return sortedData.map((row, index) => ({
+        // Ensure sortedData is always an array
+        const safeSortedData = Array.isArray(sortedData) ? sortedData : []
+
+        return safeSortedData.map((row, index) => ({
             ...row,
             rank: index + 1
         }))
@@ -222,7 +230,7 @@ export function DataTable<TData extends Record<string, any>>({
                                 resizable: true,
                             }}
                             style={{
-                                height: `${Math.max(400, (rankedData.length + 1) * 35 + 40)}px`,
+                                height: `${Math.max(400, (Array.isArray(rankedData) ? rankedData.length : 0 + 1) * 35 + 40)}px`,
                                 '--rdg-border-color': 'hsl(var(--border))',
                                 '--rdg-selection-color': 'hsl(var(--accent))',
                                 '--rdg-background-color': 'hsl(var(--background))',

@@ -56,10 +56,26 @@ export default function SelStatsPage() {
 
             const queryString = queryParams.toString();
             const response = await fetch(`/api/sel/stats${queryString ? `?${queryString}` : ''}`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
-            setData(result);
+
+            // Check if the result has an error property (API error response)
+            if (result.error) {
+                console.error('API error:', result.error, result.details);
+                setData([]); // Set empty array on error
+            } else if (Array.isArray(result)) {
+                setData(result);
+            } else {
+                console.error('Unexpected response format:', result);
+                setData([]); // Set empty array if response is not an array
+            }
         } catch (error) {
             console.error('Error fetching data:', error);
+            setData([]); // Set empty array on error
         } finally {
             if (isInitialLoad) {
                 setIsLoading(false);
@@ -109,10 +125,19 @@ export default function SelStatsPage() {
                 const response = await fetch('/api/sel/stats/seasons');
                 if (response.ok) {
                     const seasons = await response.json();
-                    setAvailableSeasons(seasons);
+                    if (Array.isArray(seasons)) {
+                        setAvailableSeasons(seasons);
+                    } else {
+                        console.error('Unexpected seasons response format:', seasons);
+                        setAvailableSeasons([]);
+                    }
+                } else {
+                    console.error('Failed to fetch seasons:', response.status);
+                    setAvailableSeasons([]);
                 }
             } catch (error) {
                 console.error('Error fetching available seasons:', error);
+                setAvailableSeasons([]);
             }
         };
 
@@ -121,10 +146,19 @@ export default function SelStatsPage() {
                 const response = await fetch('/api/sel/stats/teams');
                 if (response.ok) {
                     const teams = await response.json();
-                    setAvailableTeams(teams);
+                    if (Array.isArray(teams)) {
+                        setAvailableTeams(teams);
+                    } else {
+                        console.error('Unexpected teams response format:', teams);
+                        setAvailableTeams([]);
+                    }
+                } else {
+                    console.error('Failed to fetch teams:', response.status);
+                    setAvailableTeams([]);
                 }
             } catch (error) {
                 console.error('Error fetching available teams:', error);
+                setAvailableTeams([]);
             }
         };
 
