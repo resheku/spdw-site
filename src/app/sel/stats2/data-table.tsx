@@ -42,7 +42,7 @@ export function DataTable<TData extends Record<string, any>>({
 
         // Filter by name
         if (nameFilter) {
-            filtered = filtered.filter((row: any) => 
+            filtered = filtered.filter((row: any) =>
                 row.Name?.toLowerCase().includes(nameFilter.toLowerCase())
             )
         }
@@ -145,10 +145,19 @@ export function DataTable<TData extends Record<string, any>>({
                             sortable: true,
                             resizable: true,
                         }}
-                        style={{ height: '600px' }}
-                        className="rdg-light"
+                        style={{
+                            height: `${Math.max(400, (sortedData.length + 1) * 35 + 40)}px`,
+                            '--rdg-border-color': 'hsl(var(--border))',
+                            '--rdg-selection-color': 'hsl(var(--accent))',
+                            '--rdg-background-color': 'hsl(var(--background))',
+                            '--rdg-header-background-color': 'hsl(var(--muted))',
+                            '--rdg-row-hover-background-color': 'hsl(var(--muted) / 50%)',
+                            border: '1px solid hsl(var(--border))'
+                        } as React.CSSProperties}
+                        className="rdg-light rdg-bordered"
                         headerRowHeight={40}
                         rowHeight={35}
+                        enableVirtualization={false}
                     />
                 </div>
             )}

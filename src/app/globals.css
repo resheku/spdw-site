@@ -149,43 +149,17 @@ h1 {
   margin: 0 0 0.5rem 0;
 }
 
-/* React Data Grid Customizations */
-.rdg {
-  border: 1px solid hsl(var(--border));
-  border-radius: calc(var(--radius) - 2px);
+/* React Data Grid - Row borders only */
+.rdg-bordered {
+  --rdg-border-color: #e5e7eb;
 }
 
-.rdg-header-row {
-  background-color: hsl(var(--muted) / 50%);
-  border-bottom: 1px solid hsl(var(--border));
+.rdg-bordered .rdg-cell {
+  border-bottom: 1px solid #e5e7eb !important;
+  border-right: none !important;
 }
 
-.rdg-cell {
-  border-right: 1px solid hsl(var(--border));
-  color: hsl(var(--foreground));
-  background-color: hsl(var(--background));
-}
-
-.rdg-row:hover .rdg-cell {
-  background-color: hsl(var(--muted) / 50%);
-}
-
-.rdg-row[aria-selected=true] .rdg-cell {
-  background-color: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-}
-
-.rdg-header-cell {
-  background-color: hsl(var(--muted) / 50%);
-  color: hsl(var(--foreground));
-  font-weight: 600;
-  border-right: 1px solid hsl(var(--border));
-}
-
-.rdg-header-cell:hover {
-  background-color: hsl(var(--muted));
-}
-
-.rdg-sort-arrow {
-  color: hsl(var(--foreground));
+.rdg-bordered .rdg-header-cell {
+  border-bottom: 1px solid #e5e7eb !important;
+  border-right: none !important;
 }
