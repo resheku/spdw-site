@@ -1,10 +1,6 @@
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-
+import { Column } from "react-data-grid"
 
 export type Stat = {
     Season: number;
@@ -29,105 +25,131 @@ export type Stat = {
     Warn: number;
 }
 
-export const columns: ColumnDef<Stat>[] = [
+export const columns: Column<Stat>[] = [
     {
-        accessorKey: "Name",
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Name
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            )
-        },
+        key: "Name",
+        name: "Name",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Team",
-        header: "Team"
+        key: "Team",
+        name: "Team",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Average",
-        header: "Average",
-        cell: ({ row }) => {
-            const value = row.getValue("Average") as number;
+        key: "Average",
+        name: "Average",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const value = row.Average;
             return value ? value.toFixed(3) : "0.000";
         },
     },
     {
-        accessorKey: "Match",
-        header: "Match",
+        key: "Match",
+        name: "Match",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Heats",
-        header: "Heats",
+        key: "Heats",
+        name: "Heats",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Points",
-        header: "Points",
+        key: "Points",
+        name: "Points",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Bonus",
-        header: "Bonus",
+        key: "Bonus",
+        name: "Bonus",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorFn: (row) => row["Home Avg."],
-        id: "homeAvg",
-        header: "Home",
-        cell: ({ row }) => {
-            const value = row.getValue("homeAvg") as number | null;
+        key: "Home Avg.",
+        name: "Home",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const value = row["Home Avg."];
             return value !== null ? value.toFixed(3) : "";
         },
     },
     {
-        accessorFn: (row) => row["Away Avg."],
-        id: "awayAvg",
-        header: "Away",
-        cell: ({ row }) => {
-            const value = row.getValue("awayAvg") as number | null;
+        key: "Away Avg.",
+        name: "Away",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const value = row["Away Avg."];
             return value !== null ? value.toFixed(3) : "";
         },
     },
     {
-        accessorKey: "I",
-        header: "I",
+        key: "I",
+        name: "I",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "II",
-        header: "II",
+        key: "II",
+        name: "II",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "III",
-        header: "III",
+        key: "III",
+        name: "III",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "IV",
-        header: "IV",
+        key: "IV",
+        name: "IV",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "R",
-        header: "R",
+        key: "R",
+        name: "R",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "T",
-        header: "T",
+        key: "T",
+        name: "T",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "M",
-        header: "M",
+        key: "M",
+        name: "M",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "X",
-        header: "X",
+        key: "X",
+        name: "X",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Warn",
-        header: "Warn",
+        key: "Warn",
+        name: "Warn",
+        sortable: true,
+        resizable: true,
     },
     {
-        accessorKey: "Season",
-        header: "Season",
+        key: "Season",
+        name: "Season",
+        sortable: true,
+        resizable: true,
     },
 ]

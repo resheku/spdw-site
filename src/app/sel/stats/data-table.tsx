@@ -1,16 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-    ColumnDef,
-    ColumnFiltersState,
-    SortingState,
-    flexRender,
-    getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
-    useReactTable,
-} from "@tanstack/react-table"
+import { DataGrid, Column, SortColumn } from "react-data-grid"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -24,29 +15,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
 
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-
-interface DataTableProps<TData, TValue> {
-    columns: ColumnDef<TData, TValue>[]
+interface DataTableProps<TData> {
+    columns: Column<TData>[]
     data: TData[]
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends Record<string, any>>({
     columns,
     data,
-}: DataTableProps<TData, TValue>) {
-    const [sorting, setSorting] = React.useState<SortingState>([])
-    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-        []
-    )
+}: DataTableProps<TData>) {
+    const [nameFilter, setNameFilter] = React.useState("")
     const [selectedSeasons, setSelectedSeasons] = React.useState<number[]>([])
+    const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>([])
 
     // Extract unique seasons from data
     const uniqueSeasons = React.useMemo(() => {
@@ -56,27 +36,46 @@ export function DataTable<TData, TValue>({
         return seasons as number[]
     }, [data])
 
-    // Filter data based on selected seasons
+    // Filter data based on name filter and selected seasons
     const filteredData = React.useMemo(() => {
-        if (selectedSeasons.length === 0) {
-            return data
-        }
-        return data.filter((row: any) => selectedSeasons.includes(row.Season))
-    }, [data, selectedSeasons])
+        let filtered = data
 
-    const table = useReactTable({
-        data: filteredData,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-        onSortingChange: setSorting,
-        getSortedRowModel: getSortedRowModel(),
-        onColumnFiltersChange: setColumnFilters,
-        getFilteredRowModel: getFilteredRowModel(),
-        state: {
-            sorting,
-            columnFilters,
-        },
-    })
+        // Filter by name
+        if (nameFilter) {
+            filtered = filtered.filter((row: any) =>
+                row.Name?.toLowerCase().includes(nameFilter.toLowerCase())
+            )
+        }
+
+        // Filter by seasons
+        if (selectedSeasons.length > 0) {
+            filtered = filtered.filter((row: any) => selectedSeasons.includes(row.Season))
+        }
+
+        return filtered
+    }, [data, nameFilter, selectedSeasons])
+
+    // Sort data
+    const sortedData = React.useMemo(() => {
+        if (sortColumns.length === 0) return filteredData
+
+        return [...filteredData].sort((a, b) => {
+            for (const sort of sortColumns) {
+                const { columnKey, direction } = sort
+                const aValue = a[columnKey]
+                const bValue = b[columnKey]
+
+                let result = 0
+                if (aValue < bValue) result = -1
+                if (aValue > bValue) result = 1
+
+                if (result !== 0) {
+                    return direction === 'ASC' ? result : -result
+                }
+            }
+            return 0
+        })
+    }, [filteredData, sortColumns])
 
     const handleSeasonToggle = (season: number) => {
         setSelectedSeasons(prev =>
@@ -90,11 +89,9 @@ export function DataTable<TData, TValue>({
         <div>
             <div className="flex items-center py-4 gap-4">
                 <Input
-                    placeholder="Search ..."
-                    value={(table.getColumn("Name")?.getFilterValue() as string) ?? ""}
-                    onChange={(event) =>
-                        table.getColumn("Name")?.setFilterValue(event.target.value)
-                    }
+                    placeholder="Search by name..."
+                    value={nameFilter}
+                    onChange={(event) => setNameFilter(event.target.value)}
                     className="max-w-sm"
                 />
                 <DropdownMenu>
@@ -132,50 +129,38 @@ export function DataTable<TData, TValue>({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            <div className="overflow-hidden rounded-md border">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </TableHead>
-                                    )
-                                })}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No results.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            {sortedData.length === 0 ? (
+                <div className="rounded-md border p-8 text-center text-muted-foreground">
+                    No data found.
+                </div>
+            ) : (
+                <div className="overflow-hidden rounded-md border">
+                    <DataGrid
+                        columns={columns}
+                        rows={sortedData}
+                        sortColumns={sortColumns}
+                        onSortColumnsChange={setSortColumns}
+                        rowKeyGetter={(row) => `${row.Name}-${row.Season}-${row.Team}`}
+                        defaultColumnOptions={{
+                            sortable: true,
+                            resizable: true,
+                        }}
+                        style={{
+                            height: `${Math.max(400, (sortedData.length + 1) * 35 + 40)}px`,
+                            '--rdg-border-color': 'hsl(var(--border))',
+                            '--rdg-selection-color': 'hsl(var(--accent))',
+                            '--rdg-background-color': 'hsl(var(--background))',
+                            '--rdg-header-background-color': 'hsl(var(--muted))',
+                            '--rdg-row-hover-background-color': 'hsl(var(--muted) / 50%)',
+                            border: '1px solid hsl(var(--border))'
+                        } as React.CSSProperties}
+                        className="rdg-light rdg-bordered"
+                        headerRowHeight={40}
+                        rowHeight={35}
+                        enableVirtualization={false}
+                    />
+                </div>
+            )}
         </div>
     )
 }
