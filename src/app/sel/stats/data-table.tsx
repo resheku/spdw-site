@@ -18,25 +18,24 @@ import { ChevronDown } from "lucide-react"
 interface DataTableProps<TData> {
     columns: Column<TData>[]
     data: TData[]
+    availableSeasons: number[]
+    selectedSeasons: number[]
+    onSeasonsChange: (seasons: number[]) => void
+    isLoading?: boolean
 }
 
 export function DataTable<TData extends Record<string, any>>({
     columns,
     data,
+    availableSeasons,
+    selectedSeasons,
+    onSeasonsChange,
+    isLoading = false,
 }: DataTableProps<TData>) {
     const [nameFilter, setNameFilter] = React.useState("")
-    const [selectedSeasons, setSelectedSeasons] = React.useState<number[]>([])
     const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>([])
 
-    // Extract unique seasons from data
-    const uniqueSeasons = React.useMemo(() => {
-        const seasons = Array.from(new Set(
-            data.map((row: any) => row.Season).filter(Boolean)
-        )).sort((a, b) => b - a) // Sort descending
-        return seasons as number[]
-    }, [data])
-
-    // Filter data based on name filter and selected seasons
+    // Filter data based on name filter (client-side filtering for name still)
     const filteredData = React.useMemo(() => {
         let filtered = data
 
@@ -47,13 +46,8 @@ export function DataTable<TData extends Record<string, any>>({
             )
         }
 
-        // Filter by seasons
-        if (selectedSeasons.length > 0) {
-            filtered = filtered.filter((row: any) => selectedSeasons.includes(row.Season))
-        }
-
         return filtered
-    }, [data, nameFilter, selectedSeasons])
+    }, [data, nameFilter])
 
     // Sort data
     const sortedData = React.useMemo(() => {
@@ -78,11 +72,15 @@ export function DataTable<TData extends Record<string, any>>({
     }, [filteredData, sortColumns])
 
     const handleSeasonToggle = (season: number) => {
-        setSelectedSeasons(prev =>
-            prev.includes(season)
-                ? prev.filter(s => s !== season)
-                : [...prev, season]
-        )
+        const newSelectedSeasons = selectedSeasons.includes(season)
+            ? selectedSeasons.filter(s => s !== season)
+            : [...selectedSeasons, season]
+
+        onSeasonsChange(newSelectedSeasons)
+    }
+
+    const clearAllSeasons = () => {
+        onSeasonsChange([])
     }
 
     return (
@@ -97,14 +95,32 @@ export function DataTable<TData extends Record<string, any>>({
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="ml-auto">
-                            Seasons ({selectedSeasons.length > 0 ? selectedSeasons.length : 'All'})
+                            Seasons ({
+                                selectedSeasons.length === 0
+                                    ? 'All'
+                                    : selectedSeasons.length === 1
+                                        ? selectedSeasons[0]
+                                        : selectedSeasons.length
+                            })
                             <ChevronDown className="ml-2 h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[200px]">
                         <DropdownMenuLabel>Filter by Season</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {uniqueSeasons.map((season) => (
+                        {selectedSeasons.length > 0 && (
+                            <>
+                                <DropdownMenuCheckboxItem
+                                    className="text-red-600"
+                                    checked={false}
+                                    onCheckedChange={clearAllSeasons}
+                                >
+                                    Clear all
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
+                        {availableSeasons.map((season) => (
                             <DropdownMenuCheckboxItem
                                 key={season}
                                 className="capitalize"
@@ -114,51 +130,46 @@ export function DataTable<TData extends Record<string, any>>({
                                 {season}
                             </DropdownMenuCheckboxItem>
                         ))}
-                        {selectedSeasons.length > 0 && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuCheckboxItem
-                                    className="text-red-600"
-                                    checked={false}
-                                    onCheckedChange={() => setSelectedSeasons([])}
-                                >
-                                    Clear all
-                                </DropdownMenuCheckboxItem>
-                            </>
-                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
             {sortedData.length === 0 ? (
                 <div className="rounded-md border p-8 text-center text-muted-foreground">
-                    No data found.
+                    {isLoading ? "Loading..." : "No data found."}
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-md border">
-                    <DataGrid
-                        columns={columns}
-                        rows={sortedData}
-                        sortColumns={sortColumns}
-                        onSortColumnsChange={setSortColumns}
-                        rowKeyGetter={(row) => `${row.Name}-${row.Season}-${row.Team}`}
-                        defaultColumnOptions={{
-                            sortable: true,
-                            resizable: true,
-                        }}
-                        style={{
-                            height: `${Math.max(400, (sortedData.length + 1) * 35 + 40)}px`,
-                            '--rdg-border-color': 'hsl(var(--border))',
-                            '--rdg-selection-color': 'hsl(var(--accent))',
-                            '--rdg-background-color': 'hsl(var(--background))',
-                            '--rdg-header-background-color': 'hsl(var(--muted))',
-                            '--rdg-row-hover-background-color': 'hsl(var(--muted) / 50%)',
-                            border: '1px solid hsl(var(--border))'
-                        } as React.CSSProperties}
-                        className="rdg-light rdg-bordered"
-                        headerRowHeight={40}
-                        rowHeight={35}
-                        enableVirtualization={false}
-                    />
+                    {isLoading && (
+                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                            <div className="text-muted-foreground">Loading...</div>
+                        </div>
+                    )}
+                    <div className={isLoading ? "opacity-50" : ""}>
+                        <DataGrid
+                            columns={columns}
+                            rows={sortedData}
+                            sortColumns={sortColumns}
+                            onSortColumnsChange={setSortColumns}
+                            rowKeyGetter={(row) => `${row.Name}-${row.Season}-${row.Team}`}
+                            defaultColumnOptions={{
+                                sortable: true,
+                                resizable: true,
+                            }}
+                            style={{
+                                height: `${Math.max(400, (sortedData.length + 1) * 35 + 40)}px`,
+                                '--rdg-border-color': 'hsl(var(--border))',
+                                '--rdg-selection-color': 'hsl(var(--accent))',
+                                '--rdg-background-color': 'hsl(var(--background))',
+                                '--rdg-header-background-color': 'hsl(var(--muted))',
+                                '--rdg-row-hover-background-color': 'hsl(var(--muted) / 50%)',
+                                border: '1px solid hsl(var(--border))'
+                            } as React.CSSProperties}
+                            className="rdg-light rdg-bordered"
+                            headerRowHeight={40}
+                            rowHeight={35}
+                            enableVirtualization={false}
+                        />
+                    </div>
                 </div>
             )}
         </div>
