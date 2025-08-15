@@ -6,7 +6,7 @@ export async function GET() {
         // Get unique seasons from the stats table
         const data = await sql`
             SELECT DISTINCT "Season" 
-            FROM stats 
+            FROM sel.stats
             WHERE "Season" IS NOT NULL 
             ORDER BY "Season" DESC
         `;

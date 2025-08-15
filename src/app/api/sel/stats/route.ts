@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
             if (requestedSeasons.length > 0) {
                 const availableSeasons = await sql`
                     SELECT DISTINCT "Season" 
-                    FROM stats 
+                    FROM sel.stats
                     WHERE "Season" IS NOT NULL
                 `;
                 const validSeasons = availableSeasons.map(row => row.Season);
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             if (requestedTeams.length > 0) {
                 const availableTeams = await sql`
                     SELECT DISTINCT "Team" 
-                    FROM stats 
+                    FROM sel.stats
                     WHERE "Team" IS NOT NULL
                 `;
                 const validTeams = availableTeams.map(row => row.Team);
@@ -58,21 +58,21 @@ export async function GET(request: NextRequest) {
             if (queryParams.length === 1) {
                 // Single filter condition
                 if (seasonsParam && !teamsParam) {
-                    data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]})`;
+                    data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]})`;
                 } else if (teamsParam && !seasonsParam) {
-                    data = await sql`SELECT * FROM stats WHERE "Team" = ANY(${queryParams[0]})`;
+                    data = await sql`SELECT * FROM sel.stats WHERE "Team" = ANY(${queryParams[0]})`;
                 } else {
                     // Both filters
-                    data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
+                    data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
                 }
             } else if (queryParams.length === 2) {
                 // Both season and team filters
-                data = await sql`SELECT * FROM stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
+                data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
             } else {
-                data = await sql`SELECT * FROM stats`;
+                data = await sql`SELECT * FROM sel.stats`;
             }
         } else {
-            data = await sql`SELECT * FROM stats`;
+            data = await sql`SELECT * FROM sel.stats`;
         }
 
         return NextResponse.json(data);

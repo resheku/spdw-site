@@ -5,7 +5,7 @@ export async function GET() {
     try {
         const result = await sql`
             SELECT DISTINCT "Team" 
-            FROM stats 
+            FROM sel.stats
             WHERE "Team" IS NOT NULL
             ORDER BY "Team" ASC
         `;
