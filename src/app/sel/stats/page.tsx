@@ -12,10 +12,10 @@ import {
 
 import { columns, Stat } from "./columns"
 import { DataTable } from "./data-table"
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function SelStatsPage() {
+function SelStatsContent() {
     const [data, setData] = useState<Stat[]>([]);
     const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
     const [availableTeams, setAvailableTeams] = useState<string[]>([]);
@@ -172,6 +172,30 @@ export default function SelStatsPage() {
     }, []); // Only run on mount
 
     return (
+        <div className="px-4 py-2 pb-20">
+            {isLoading ? (
+                <div className="rounded-md border p-8 text-center text-muted-foreground">
+                    Loading...
+                </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={data}
+                    availableSeasons={availableSeasons}
+                    selectedSeasons={selectedSeasons}
+                    onSeasonsChange={handleSeasonsChange}
+                    availableTeams={availableTeams}
+                    selectedTeams={selectedTeams}
+                    onTeamsChange={handleTeamsChange}
+                    isLoading={isFilterLoading}
+                />
+            )}
+        </div>
+    );
+}
+
+export default function SelStatsPage() {
+    return (
         <>
             <div className="p-4">
                 <Breadcrumb>
@@ -198,25 +222,15 @@ export default function SelStatsPage() {
                 <h1>sel stats</h1>
                 <br />
             </div>
-            <div className="px-4 py-2 pb-20">
-                {isLoading ? (
+            <Suspense fallback={
+                <div className="px-4 py-2 pb-20">
                     <div className="rounded-md border p-8 text-center text-muted-foreground">
                         Loading...
                     </div>
-                ) : (
-                    <DataTable
-                        columns={columns}
-                        data={data}
-                        availableSeasons={availableSeasons}
-                        selectedSeasons={selectedSeasons}
-                        onSeasonsChange={handleSeasonsChange}
-                        availableTeams={availableTeams}
-                        selectedTeams={selectedTeams}
-                        onTeamsChange={handleTeamsChange}
-                        isLoading={isFilterLoading}
-                    />
-                )}
-            </div>
+                </div>
+            }>
+                <SelStatsContent />
+            </Suspense>
         </>
     )
 }
