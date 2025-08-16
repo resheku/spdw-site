@@ -155,14 +155,27 @@ export function DataTable<TData extends Record<string, any>>({
                             </>
                         )}
                         {availableTeams.map((team) => (
-                            <DropdownMenuCheckboxItem
+                            <div
                                 key={team}
-                                className="capitalize"
-                                checked={selectedTeams.includes(team)}
-                                onCheckedChange={() => handleTeamToggle(team)}
+                                className="relative flex cursor-default items-center rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
                             >
-                                {team}
-                            </DropdownMenuCheckboxItem>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedTeams.includes(team)}
+                                    onChange={() => handleTeamToggle(team)}
+                                    className="mr-2 size-4 cursor-pointer accent-primary"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                    className="underline underline-offset-2 hover:no-underline text-left flex-1 capitalize"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onTeamsChange([team]);
+                                    }}
+                                >
+                                    {team}
+                                </button>
+                            </div>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -195,14 +208,27 @@ export function DataTable<TData extends Record<string, any>>({
                             </>
                         )}
                         {availableSeasons.map((season) => (
-                            <DropdownMenuCheckboxItem
+                            <div
                                 key={season}
-                                className="capitalize"
-                                checked={selectedSeasons.includes(season)}
-                                onCheckedChange={() => handleSeasonToggle(season)}
+                                className="relative flex cursor-default items-center rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
                             >
-                                {season}
-                            </DropdownMenuCheckboxItem>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedSeasons.includes(season)}
+                                    onChange={() => handleSeasonToggle(season)}
+                                    className="mr-2 size-4 cursor-pointer accent-primary"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                    className="underline underline-offset-2 hover:no-underline text-left flex-1"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSeasonsChange([season]);
+                                    }}
+                                >
+                                    {season}
+                                </button>
+                            </div>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
