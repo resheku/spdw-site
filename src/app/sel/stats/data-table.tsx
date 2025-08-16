@@ -43,7 +43,20 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Initialize nameFilter from URL search params, keeping all existing functionality
     const [nameFilter, setNameFilter] = React.useState(() => searchParams.get('search') || "")
-    const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>([])
+
+    // Initialize sortColumns from URL search params
+    const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>(() => {
+        const sortParam = searchParams.get('sort')
+        if (sortParam) {
+            try {
+                const sortData = JSON.parse(sortParam)
+                return Array.isArray(sortData) ? sortData : []
+            } catch {
+                return []
+            }
+        }
+        return []
+    })
 
     // Update URL when nameFilter changes (keeping the same client-side filtering)
     React.useEffect(() => {
@@ -61,6 +74,30 @@ export function DataTable<TData extends Record<string, any>>({
         // Update URL without causing page navigation
         window.history.replaceState({}, '', `?${queryString}`)
     }, [nameFilter, searchParams])
+
+    // Update URL when sortColumns changes
+    React.useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString())
+
+        if (sortColumns.length > 0) {
+            params.set('sort', JSON.stringify(sortColumns))
+        } else {
+            params.delete('sort')
+        }
+
+        // Convert URLSearchParams to string and decode all encoded characters for clean URLs
+        const queryString = params.toString()
+            .replace(/%2C/g, ',')
+            .replace(/%3A/g, ':')
+            .replace(/%22/g, '"')
+            .replace(/%5B/g, '[')
+            .replace(/%5D/g, ']')
+            .replace(/%7B/g, '{')
+            .replace(/%7D/g, '}')
+
+        // Update URL without causing page navigation
+        window.history.replaceState({}, '', `?${queryString}`)
+    }, [sortColumns, searchParams])
 
     // Filter data based on name filter (client-side filtering for name still)
     const filteredData = React.useMemo(() => {
