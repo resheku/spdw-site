@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { DataGrid, Column, SortColumn } from "react-data-grid"
+import { useSearchParams } from "next/navigation"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, X } from "lucide-react"
 
 interface DataTableProps<TData> {
     columns: Column<TData & { rank: number }>[]
@@ -38,8 +39,28 @@ export function DataTable<TData extends Record<string, any>>({
     onTeamsChange,
     isLoading = false,
 }: DataTableProps<TData>) {
-    const [nameFilter, setNameFilter] = React.useState("")
+    const searchParams = useSearchParams()
+
+    // Initialize nameFilter from URL search params, keeping all existing functionality
+    const [nameFilter, setNameFilter] = React.useState(() => searchParams.get('search') || "")
     const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>([])
+
+    // Update URL when nameFilter changes (keeping the same client-side filtering)
+    React.useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString())
+
+        if (nameFilter.trim()) {
+            params.set('search', nameFilter.trim())
+        } else {
+            params.delete('search')
+        }
+
+        // Convert URLSearchParams to string and decode commas
+        const queryString = params.toString().replace(/%2C/g, ',')
+
+        // Update URL without causing page navigation
+        window.history.replaceState({}, '', `?${queryString}`)
+    }, [nameFilter, searchParams])
 
     // Filter data based on name filter (client-side filtering for name still)
     const filteredData = React.useMemo(() => {
@@ -120,12 +141,23 @@ export function DataTable<TData extends Record<string, any>>({
     return (
         <div>
             <div className="flex items-center py-4 gap-4">
-                <Input
-                    placeholder="Search by name..."
-                    value={nameFilter}
-                    onChange={(event) => setNameFilter(event.target.value)}
-                    className="max-w-sm"
-                />
+                <div className="relative max-w-sm">
+                    <Input
+                        placeholder="Search by name..."
+                        value={nameFilter}
+                        onChange={(event) => setNameFilter(event.target.value)}
+                        className="pr-8"
+                    />
+                    {nameFilter && (
+                        <button
+                            onClick={() => setNameFilter("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            type="button"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline">

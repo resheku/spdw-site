@@ -42,6 +42,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         name: "Name",
         sortable: true,
         resizable: true,
+        minWidth: 150,
     },
     {
         key: "Team",
