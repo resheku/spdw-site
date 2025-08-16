@@ -95,8 +95,11 @@ function SelStatsContent() {
             params.delete('season');
         }
 
+        // Convert URLSearchParams to string and decode commas
+        const queryString = params.toString().replace(/%2C/g, ',');
+
         // Update URL without causing page navigation
-        window.history.replaceState({}, '', `?${params.toString()}`);
+        window.history.replaceState({}, '', `?${queryString}`);
 
         // Fetch new data
         fetchData(seasons, selectedTeams);
@@ -112,8 +115,11 @@ function SelStatsContent() {
             params.delete('team');
         }
 
+        // Convert URLSearchParams to string and decode commas
+        const queryString = params.toString().replace(/%2C/g, ',');
+
         // Update URL without causing page navigation
-        window.history.replaceState({}, '', `?${params.toString()}`);
+        window.history.replaceState({}, '', `?${queryString}`);
 
         // Fetch new data
         fetchData(selectedSeasons, teams);
