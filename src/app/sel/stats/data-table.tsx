@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -25,6 +26,8 @@ interface DataTableProps<TData> {
     availableTeams: string[]
     selectedTeams: string[]
     onTeamsChange: (teams: string[]) => void
+    selectedHeatsRange: number[]
+    onHeatsRangeChange: (heatsRange: number[]) => void
     isLoading?: boolean
 }
 
@@ -37,6 +40,8 @@ export function DataTable<TData extends Record<string, any>>({
     availableTeams,
     selectedTeams,
     onTeamsChange,
+    selectedHeatsRange,
+    onHeatsRangeChange,
     isLoading = false,
 }: DataTableProps<TData>) {
     const searchParams = useSearchParams()
@@ -99,7 +104,64 @@ export function DataTable<TData extends Record<string, any>>({
         window.history.replaceState({}, '', `?${queryString}`)
     }, [sortColumns, searchParams])
 
-    // Filter data based on name filter (client-side filtering for name still)
+    // Calculate heats range from data only when data changes (e.g., season filter changes)
+    const heatsRange = React.useMemo(() => {
+        if (!Array.isArray(data) || data.length === 0) {
+            return { min: 0, max: 100 };
+        }
+
+        const heatsValues = data
+            .map((row: any) => row.Heats)
+            .filter((heats: any) => typeof heats === 'number' && !isNaN(heats));
+
+        if (heatsValues.length === 0) {
+            return { min: 0, max: 100 };
+        }
+
+        const min = Math.min(...heatsValues);
+        const max = Math.max(...heatsValues);
+
+        return { min, max };
+    }, [data]); // Only recalculate when data changes (e.g., season/team filters)
+
+    // Local state for slider to make it more responsive
+    const [localHeatsRange, setLocalHeatsRange] = React.useState<number[]>([]);
+
+    // Update local state when selectedHeatsRange changes or when heatsRange changes
+    React.useEffect(() => {
+        if (selectedHeatsRange.length === 2) {
+            setLocalHeatsRange(selectedHeatsRange);
+        } else {
+            setLocalHeatsRange([heatsRange.min, heatsRange.max]);
+        }
+    }, [selectedHeatsRange, heatsRange.min, heatsRange.max]);
+
+    // Debounced update to avoid too many URL updates
+    const debouncedHeatsRangeUpdate = React.useCallback(
+        React.useMemo(() => {
+            let timeoutId: NodeJS.Timeout;
+            return (newRange: number[]) => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    onHeatsRangeChange(newRange);
+                }, 300); // 300ms delay
+            };
+        }, [onHeatsRangeChange]),
+        [onHeatsRangeChange]
+    );
+
+    const handleSliderChange = (newRange: number[]) => {
+        setLocalHeatsRange(newRange);
+        debouncedHeatsRangeUpdate(newRange);
+    };
+
+    const resetHeatsFilter = () => {
+        const resetRange = [heatsRange.min, heatsRange.max];
+        setLocalHeatsRange(resetRange);
+        onHeatsRangeChange([]);
+    };
+
+    // Filter data based on name filter and heats range (client-side filtering)
     const filteredData = React.useMemo(() => {
         // Ensure data is always an array
         const safeData = Array.isArray(data) ? data : []
@@ -112,8 +174,23 @@ export function DataTable<TData extends Record<string, any>>({
             )
         }
 
+        // Filter by heats range (use local state for immediate feedback, fall back to selected range)
+        const activeHeatsRange = localHeatsRange.length === 2 ? localHeatsRange : selectedHeatsRange;
+        if (activeHeatsRange.length === 2) {
+            const [minHeats, maxHeats] = activeHeatsRange;
+            // Simple range check - only filter if not showing full range
+            if (minHeats > heatsRange.min || maxHeats < heatsRange.max) {
+                filtered = filtered.filter((row: any) => {
+                    const heats = row.Heats;
+                    return typeof heats === 'number' &&
+                        heats >= minHeats &&
+                        heats <= maxHeats;
+                });
+            }
+        }
+
         return filtered
-    }, [data, nameFilter])
+    }, [data, nameFilter, localHeatsRange, selectedHeatsRange, heatsRange.min, heatsRange.max])
 
     // Sort data
     const sortedData = React.useMemo(() => {
@@ -246,6 +323,49 @@ export function DataTable<TData extends Record<string, any>>({
                                 </button>
                             </div>
                         ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Heats ({
+                                selectedHeatsRange.length === 2
+                                    ? `${selectedHeatsRange[0]}-${selectedHeatsRange[1]}`
+                                    : 'All'
+                            })
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[420px]">
+                        <DropdownMenuLabel>Filter by Number of Heats</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator />
+                        <div className="px-6 py-4">
+                            <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
+                                <span>{localHeatsRange[0] || heatsRange.min}</span>
+                                <span>{localHeatsRange[1] || heatsRange.max}</span>
+                            </div>
+                            <Slider
+                                value={localHeatsRange.length === 2 ? localHeatsRange : [heatsRange.min, heatsRange.max]}
+                                onValueChange={handleSliderChange}
+                                min={heatsRange.min}
+                                max={heatsRange.max}
+                                step={1}
+                                className="w-full"
+                            />
+                            <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
+                                <span>Min: {heatsRange.min}</span>
+                                <span>Max: {heatsRange.max}</span>
+                            </div>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                            className="text-red-600"
+                            checked={false}
+                            onCheckedChange={resetHeatsFilter}
+                        >
+                            Reset filter
+                        </DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DropdownMenu>

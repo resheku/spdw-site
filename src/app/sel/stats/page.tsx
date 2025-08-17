@@ -36,6 +36,12 @@ function SelStatsContent() {
         ? teamsParam.split(',').map(t => t.trim()).filter(t => t.length > 0)
         : [];
 
+    // Get heats range from URL search params
+    const heatsParam = searchParams.get('heats');
+    const selectedHeatsRange = heatsParam
+        ? heatsParam.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h))
+        : []; // Empty array means no filter applied
+
     const fetchData = useCallback(async (seasons: number[] = [], teams: string[] = []) => {
         const isInitialLoad = data.length === 0;
 
@@ -125,6 +131,23 @@ function SelStatsContent() {
         fetchData(selectedSeasons, teams);
     }, [searchParams, fetchData, selectedSeasons]);
 
+    const handleHeatsRangeChange = useCallback((heatsRange: number[]) => {
+        // Update URL without navigation
+        const params = new URLSearchParams(searchParams.toString());
+
+        if (heatsRange.length === 2) {
+            params.set('heats', heatsRange.join(','));
+        } else {
+            params.delete('heats');
+        }
+
+        // Convert URLSearchParams to string and decode commas
+        const queryString = params.toString().replace(/%2C/g, ',');
+
+        // Update URL without causing page navigation
+        window.history.replaceState({}, '', `?${queryString}`);
+    }, [searchParams]);
+
     useEffect(() => {
         const fetchAvailableSeasons = async () => {
             try {
@@ -193,6 +216,8 @@ function SelStatsContent() {
                     availableTeams={availableTeams}
                     selectedTeams={selectedTeams}
                     onTeamsChange={handleTeamsChange}
+                    selectedHeatsRange={selectedHeatsRange}
+                    onHeatsRangeChange={handleHeatsRangeChange}
                     isLoading={isFilterLoading}
                 />
             )}
