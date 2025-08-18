@@ -1,5 +1,6 @@
 import sql from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getSecondsUntilNext10PMUTC } from '@/lib/cache-headers';
 
 export async function GET(request: NextRequest) {
     try {
@@ -75,7 +76,13 @@ export async function GET(request: NextRequest) {
             data = await sql`SELECT * FROM sel.stats`;
         }
 
-        return NextResponse.json(data);
+        const res = NextResponse.json(data);
+        const sMaxAge = getSecondsUntilNext10PMUTC();
+        res.headers.set(
+            'Cache-Control',
+            `public, s-maxage=${sMaxAge}, stale-while-revalidate=60`
+        );
+        return res;
     } catch (error) {
         console.error('Database query failed:', error);
 
