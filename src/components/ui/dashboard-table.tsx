@@ -67,7 +67,7 @@ export function DashboardTable({ title, data, columns, isLoading = false, classN
                     {columns.map((column) => (
                       <TableCell key={column} className="py-2 px-4">
                         {typeof row[column] === 'number' && column === 'Speed'
-                          ? row[column].toFixed(1)
+                          ? row[column].toFixed(2)
                           : typeof row[column] === 'number' && column === 'Average'
                             ? row[column].toFixed(3)
                             : row[column]}
