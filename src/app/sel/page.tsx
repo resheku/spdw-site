@@ -93,6 +93,17 @@ export default function SELPage() {
     fetchData();
   }, []);
 
+  // Helper to map 'No' field to '' for all rows
+  function mapNoToEmptyKey(arr: any[]) {
+    return arr.map(row => {
+      if (row && typeof row === 'object' && row['No'] !== undefined) {
+        const { No, ...rest } = row;
+        return { '': No, ...rest };
+      }
+      return row;
+    });
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,34 +125,47 @@ export default function SELPage() {
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
+              titleElement={
+                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">
+                  {currentSeason ? `${currentSeason}` : "Averages"}
+                </Link>
+              }
               title={currentSeason ? `${currentSeason}` : "Averages"}
-              data={dashboardData.bestAveragesThisSeason}
-              columns={['No', 'Name', 'Team', 'Average']}
+              data={mapNoToEmptyKey(dashboardData.bestAveragesThisSeason)}
+              columns={['', 'Name', 'Team', 'Average']}
               isLoading={isLoading}
             />
 
+            {/* //TODO: update link to follow same rule as query and include the no heats filter */}
             <DashboardTable
+              titleElement={
+                <Link href="/sel/stats" className="spdw-link">
+                  {seasonRange ? `${seasonRange}` : "All Time"}
+                </Link>
+              }
               title={seasonRange ? `${seasonRange}` : "All Time"}
-              data={dashboardData.bestAveragesAllTime}
-              columns={['No', 'Name', 'Team', 'Season', 'Average']}
+              data={mapNoToEmptyKey(dashboardData.bestAveragesAllTime)}
+              columns={['', 'Name', 'Team', 'Season', 'Average']}
               isLoading={isLoading}
               highlightSeason={currentSeason}
             />
           </div>
 
-          <h2 className="text-2xl font-bold mb-2">top speed</h2>
+          <h3 className="text-2xl font-bold mb-2">
+            top speed <span className="text-base font-normal text-black-500">(km/h)</span>
+          </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
               title={currentSeason ? `${currentSeason}` : "Max Speed"}
-              data={dashboardData.maxSpeedsThisSeason}
-              columns={['No', 'Name', 'Team', 'Speed', 'Track', 'Date']}
+              data={mapNoToEmptyKey(dashboardData.maxSpeedsThisSeason)}
+              columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
               isLoading={isLoading}
             />
 
             <DashboardTable
               title={maxSpeedRange ? `${maxSpeedRange}` : "All Time"}
-              data={dashboardData.maxSpeedsAllTime}
-              columns={['No', 'Name', 'Team', 'Speed', 'Track', 'Date']}
+              data={mapNoToEmptyKey(dashboardData.maxSpeedsAllTime)}
+              columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
               isLoading={isLoading}
               highlightSeason={currentSeason}
             />
