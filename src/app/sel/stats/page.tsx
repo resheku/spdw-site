@@ -13,12 +13,16 @@ import {
 import { columns, Stat } from "./columns"
 import { DataTable } from "./data-table"
 import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useCachedFetch } from '@/lib/useCachedFetch';
+import { useCachedFetchWithParams } from '@/lib/useCachedFetchWithParams';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 function SelStatsContent() {
     const [data, setData] = useState<Stat[]>([]);
-    const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
-    const [availableTeams, setAvailableTeams] = useState<string[]>([]);
+    const { data: availableSeasonsRaw, loading: loadingSeasons } = useCachedFetch('/api/sel/stats/seasons') as { data: unknown, loading: boolean };
+    const { data: availableTeamsRaw, loading: loadingTeams } = useCachedFetch('/api/sel/stats/teams') as { data: unknown, loading: boolean };
+    const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) ? availableSeasonsRaw : [];
+    const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw : [];
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isFilterLoading, setIsFilterLoading] = useState<boolean>(false);
     const searchParams = useSearchParams();
@@ -42,54 +46,16 @@ function SelStatsContent() {
         ? heatsParam.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h))
         : []; // Empty array means no filter applied
 
-    const fetchData = useCallback(async (seasons: number[] = [], teams: string[] = []) => {
-        const isInitialLoad = data.length === 0;
-
-        if (isInitialLoad) {
-            setIsLoading(true);
-        } else {
-            setIsFilterLoading(true);
-        }
-
-        try {
-            const queryParams = new URLSearchParams();
-            if (seasons.length > 0) {
-                queryParams.set('season', seasons.join(','));
-            }
-            if (teams.length > 0) {
-                queryParams.set('team', teams.join(','));
-            }
-
-            const queryString = queryParams.toString();
-            const response = await fetch(`/api/sel/stats${queryString ? `?${queryString}` : ''}`);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            // Check if the result has an error property (API error response)
-            if (result.error) {
-                console.error('API error:', result.error, result.details);
-                setData([]); // Set empty array on error
-            } else if (Array.isArray(result)) {
-                setData(result);
-            } else {
-                console.error('Unexpected response format:', result);
-                setData([]); // Set empty array if response is not an array
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            setData([]); // Set empty array on error
-        } finally {
-            if (isInitialLoad) {
-                setIsLoading(false);
-            } else {
-                setIsFilterLoading(false);
-            }
-        }
-    }, [data.length]);
+    // Build the API URL with query params
+    const queryParams = new URLSearchParams();
+    if (selectedSeasons.length > 0) {
+        queryParams.set('season', selectedSeasons.join(','));
+    }
+    if (selectedTeams.length > 0) {
+        queryParams.set('team', selectedTeams.join(','));
+    }
+    const statsUrl = `/api/sel/stats${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const { data: statsData, loading: loadingStats } = useCachedFetchWithParams(statsUrl);
 
     const handleSeasonsChange = useCallback((seasons: number[]) => {
         // Update URL without navigation
@@ -106,10 +72,8 @@ function SelStatsContent() {
 
         // Update URL without causing page navigation
         window.history.replaceState({}, '', `?${queryString}`);
-
-        // Fetch new data
-        fetchData(seasons, selectedTeams);
-    }, [searchParams, fetchData, selectedTeams]);
+        // No need to fetch manually, hook will update
+    }, [searchParams]);
 
     const handleTeamsChange = useCallback((teams: string[]) => {
         // Update URL without navigation
@@ -126,10 +90,8 @@ function SelStatsContent() {
 
         // Update URL without causing page navigation
         window.history.replaceState({}, '', `?${queryString}`);
-
-        // Fetch new data
-        fetchData(selectedSeasons, teams);
-    }, [searchParams, fetchData, selectedSeasons]);
+        // No need to fetch manually, hook will update
+    }, [searchParams]);
 
     const handleHeatsRangeChange = useCallback((heatsRange: number[]) => {
         // Update URL without navigation
@@ -148,61 +110,20 @@ function SelStatsContent() {
         window.history.replaceState({}, '', `?${queryString}`);
     }, [searchParams]);
 
+    // No need for useEffect, availableSeasons and availableTeams are now from cache
+
+    // Update data when statsData changes
     useEffect(() => {
-        const fetchAvailableSeasons = async () => {
-            try {
-                const response = await fetch('/api/sel/stats/seasons');
-                if (response.ok) {
-                    const seasons = await response.json();
-                    if (Array.isArray(seasons)) {
-                        setAvailableSeasons(seasons);
-                    } else {
-                        console.error('Unexpected seasons response format:', seasons);
-                        setAvailableSeasons([]);
-                    }
-                } else {
-                    console.error('Failed to fetch seasons:', response.status);
-                    setAvailableSeasons([]);
-                }
-            } catch (error) {
-                console.error('Error fetching available seasons:', error);
-                setAvailableSeasons([]);
-            }
-        };
-
-        const fetchAvailableTeams = async () => {
-            try {
-                const response = await fetch('/api/sel/stats/teams');
-                if (response.ok) {
-                    const teams = await response.json();
-                    if (Array.isArray(teams)) {
-                        setAvailableTeams(teams);
-                    } else {
-                        console.error('Unexpected teams response format:', teams);
-                        setAvailableTeams([]);
-                    }
-                } else {
-                    console.error('Failed to fetch teams:', response.status);
-                    setAvailableTeams([]);
-                }
-            } catch (error) {
-                console.error('Error fetching available teams:', error);
-                setAvailableTeams([]);
-            }
-        };
-
-        fetchAvailableSeasons();
-        fetchAvailableTeams();
-    }, []);
-
-    // Initial data load
-    useEffect(() => {
-        fetchData(selectedSeasons, selectedTeams);
-    }, []); // Only run on mount
+        if (Array.isArray(statsData)) {
+            setData(statsData);
+        } else if (statsData && statsData.error) {
+            setData([]);
+        }
+    }, [statsData]);
 
     return (
         <div className="px-4 py-2 pb-20">
-            {isLoading ? (
+            {loadingStats ? (
                 <div className="rounded-md border p-8 text-center text-muted-foreground">
                     Loading...
                 </div>
@@ -218,7 +139,7 @@ function SelStatsContent() {
                     onTeamsChange={handleTeamsChange}
                     selectedHeatsRange={selectedHeatsRange}
                     onHeatsRangeChange={handleHeatsRangeChange}
-                    isLoading={isFilterLoading}
+                    isLoading={loadingStats}
                 />
             )}
         </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useCachedFetch } from '@/lib/useCachedFetch';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,78 +21,29 @@ interface DashboardData {
 }
 
 export default function SELPage() {
-  const [dashboardData, setDashboardData] = useState({
-    bestAveragesThisSeason: [],
-    bestAveragesAllTime: [],
-    maxSpeedsThisSeason: [],
-    maxSpeedsAllTime: []
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  // Use env var or fallback to current year
   const currentSeason = Number(process.env.NEXT_PUBLIC_CURRENT_SEASON) || new Date().getFullYear();
-  const [seasonRange, setSeasonRange] = useState<string>("");
-  const [maxSpeedRange, setMaxSpeedRange] = useState<string>("");
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-
-        // Fetch all seasons for the range
-        const seasonsResponse = await fetch('/api/sel/seasons');
-        const seasons = await seasonsResponse.json();
-
-
-        // Set season range for all-time table (averages)
-        if (Array.isArray(seasons) && seasons.length > 0) {
-          const firstSeason = seasons[seasons.length - 1];
-          setSeasonRange(`${firstSeason} - ${currentSeason}`);
-        } else {
-          setSeasonRange("");
-        }
-
-        // Fetch actual range for max speed (telemetry seasons only)
-        const telemetrySeasonsResp = await fetch('/api/sel/dashboard/max-speeds/telem-seasons');
-        const telemetrySeasons = await telemetrySeasonsResp.json();
-        if (Array.isArray(telemetrySeasons) && telemetrySeasons.length > 0) {
-          const firstT = telemetrySeasons[telemetrySeasons.length - 1];
-          const lastT = telemetrySeasons[0];
-          setMaxSpeedRange(`${firstT} - ${lastT}`);
-        } else {
-          setMaxSpeedRange("");
-        }
-
-        // Use current season from env
-        // currentSeason is always set above, no need to check or log error
-
-        // Then fetch all dashboard data in parallel
-        const [
-          bestAveragesThisSeason,
-          bestAveragesAllTime,
-          maxSpeedsThisSeason,
-          maxSpeedsAllTime
-        ] = await Promise.all([
-          fetch(`/api/sel/dashboard/best-averages?season=${currentSeason}`).then(res => res.json()),
-          fetch('/api/sel/dashboard/best-averages?season=all').then(res => res.json()),
-          fetch(`/api/sel/dashboard/max-speeds?season=${currentSeason}`).then(res => res.json()),
-          fetch('/api/sel/dashboard/max-speeds?season=all').then(res => res.json())
-        ]);
-
-        setDashboardData({
-          bestAveragesThisSeason,
-          bestAveragesAllTime,
-          maxSpeedsThisSeason,
-          maxSpeedsAllTime
-        });
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
+  // Use cached fetch for all API endpoints
+  const { data: seasons, loading: loadingSeasons } = useCachedFetch('/api/sel/seasons') as { data: unknown, loading: boolean };
+  const { data: telemetrySeasons, loading: loadingTelemetrySeasons } = useCachedFetch('/api/sel/dashboard/max-speeds/telem-seasons') as { data: unknown, loading: boolean };
+  const { data: bestAveragesThisSeason, loading: loadingBestAveragesThisSeason } = useCachedFetch(`/api/sel/dashboard/best-averages?season=${currentSeason}`) as { data: unknown, loading: boolean };
+  const { data: bestAveragesAllTime, loading: loadingBestAveragesAllTime } = useCachedFetch('/api/sel/dashboard/best-averages?season=all') as { data: unknown, loading: boolean };
+  const { data: maxSpeedsThisSeason, loading: loadingMaxSpeedsThisSeason } = useCachedFetch(`/api/sel/dashboard/max-speeds?season=${currentSeason}`) as { data: unknown, loading: boolean };
+  const { data: maxSpeedsAllTime, loading: loadingMaxSpeedsAllTime } = useCachedFetch('/api/sel/dashboard/max-speeds?season=all') as { data: unknown, loading: boolean };
+  const isLoading = loadingSeasons || loadingTelemetrySeasons || loadingBestAveragesThisSeason || loadingBestAveragesAllTime || loadingMaxSpeedsThisSeason || loadingMaxSpeedsAllTime;
+  // Compute season range and max speed range from cached data
+  let seasonRange = '';
+  if (Array.isArray(seasons) && (seasons as any[]).length > 0) {
+    const arr = seasons as any[];
+    const firstSeason = arr[arr.length - 1];
+    seasonRange = `${firstSeason} - ${currentSeason}`;
+  }
+  let maxSpeedRange = '';
+  if (Array.isArray(telemetrySeasons) && (telemetrySeasons as any[]).length > 0) {
+    const arr = telemetrySeasons as any[];
+    const firstT = arr[arr.length - 1];
+    const lastT = arr[0];
+    maxSpeedRange = `${firstT} - ${lastT}`;
+  }
 
   // Helper to map 'No' field to '' for all rows
   function mapNoToEmptyKey(arr: any[]) {
@@ -131,7 +83,7 @@ export default function SELPage() {
                 </Link>
               }
               title={currentSeason ? `${currentSeason}` : "Averages"}
-              data={mapNoToEmptyKey(dashboardData.bestAveragesThisSeason)}
+              data={mapNoToEmptyKey(Array.isArray(bestAveragesThisSeason) ? bestAveragesThisSeason : [])}
               columns={['', 'Name', 'Team', 'Average']}
               isLoading={isLoading}
             />
@@ -144,7 +96,7 @@ export default function SELPage() {
                 </Link>
               }
               title={seasonRange ? `${seasonRange}` : "All Time"}
-              data={mapNoToEmptyKey(dashboardData.bestAveragesAllTime)}
+              data={mapNoToEmptyKey(Array.isArray(bestAveragesAllTime) ? bestAveragesAllTime : [])}
               columns={['', 'Name', 'Team', 'Season', 'Average']}
               isLoading={isLoading}
               highlightSeason={currentSeason}
@@ -157,14 +109,14 @@ export default function SELPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
               title={currentSeason ? `${currentSeason}` : "Max Speed"}
-              data={mapNoToEmptyKey(dashboardData.maxSpeedsThisSeason)}
+              data={mapNoToEmptyKey(Array.isArray(maxSpeedsThisSeason) ? maxSpeedsThisSeason : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
               isLoading={isLoading}
             />
 
             <DashboardTable
               title={maxSpeedRange ? `${maxSpeedRange}` : "All Time"}
-              data={mapNoToEmptyKey(dashboardData.maxSpeedsAllTime)}
+              data={mapNoToEmptyKey(Array.isArray(maxSpeedsAllTime) ? maxSpeedsAllTime : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
               isLoading={isLoading}
               highlightSeason={currentSeason}
