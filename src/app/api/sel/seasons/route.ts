@@ -4,11 +4,11 @@ import { getSecondsUntilNext10PMUTC } from '@/lib/cache-headers';
 
 export async function GET() {
     try {
-        // Get unique seasons from the stats table
+
         const data = await sql`
             SELECT DISTINCT "Season" 
             FROM sel.stats
-            WHERE "Season" IS NOT NULL 
+            WHERE "Season" IS NOT NULL
             ORDER BY "Season" DESC
         `;
 
@@ -22,7 +22,6 @@ export async function GET() {
         return res;
     } catch (error) {
         console.error('Database query failed:', error);
-
         return NextResponse.json(
             {
                 error: 'Failed to fetch seasons data',
