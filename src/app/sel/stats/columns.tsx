@@ -23,6 +23,7 @@ export type Stat = {
     X: number;
     F: number;
     Warn: number;
+    "Max Speed": number | null;
     rank?: number; // Dynamic rank column
 }
 
@@ -156,6 +157,16 @@ export const columns: Column<Stat & { rank: number }>[] = [
         name: "Warn",
         sortable: true,
         resizable: true,
+    },
+    {
+        key: "Max Speed",
+        name: "Speed",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const value = row["Max Speed"];
+            return value !== null ? value.toFixed(2) : "";
+        },
     },
     {
         key: "Season",
