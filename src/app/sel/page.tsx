@@ -57,9 +57,9 @@ export default function SELPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-        <Breadcrumb className="mb-8">
+    <>
+      <div className="p-4">
+        <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink href="/">Home</BreadcrumbLink>
@@ -70,7 +70,12 @@ export default function SELPage() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-
+      </div>
+      <div className="content-area">
+        <h1>sel</h1>
+        <br />
+      </div>
+      <div className="px-4 py-2 pb-20">
         <div className="space-y-8 w-full">
           <h2 className="text-2xl font-bold mb-2">
             <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">stats</Link>
@@ -104,10 +109,15 @@ export default function SELPage() {
           </div>
 
           <h3 className="text-2xl font-bold mb-2">
-            top speed <span className="text-base font-normal text-black-500">(km/h)</span>
+            <Link href="/sel/speed" className="spdw-link">top speed</Link> <span className="text-base font-normal text-black-500">(km/h)</span>
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
+              titleElement={
+                <Link href={`/sel/speed?season=${currentSeason}`} className="spdw-link">
+                  {currentSeason ? `${currentSeason}` : "Max Speed"}
+                </Link>
+              }
               title={currentSeason ? `${currentSeason}` : "Max Speed"}
               data={mapNoToEmptyKey(Array.isArray(maxSpeedsThisSeason) ? maxSpeedsThisSeason : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
@@ -115,6 +125,11 @@ export default function SELPage() {
             />
 
             <DashboardTable
+              titleElement={
+                <Link href="/sel/speed" className="spdw-link">
+                  {maxSpeedRange ? `${maxSpeedRange}` : "All Time"}
+                </Link>
+              }
               title={maxSpeedRange ? `${maxSpeedRange}` : "All Time"}
               data={mapNoToEmptyKey(Array.isArray(maxSpeedsAllTime) ? maxSpeedsAllTime : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
@@ -124,6 +139,6 @@ export default function SELPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
