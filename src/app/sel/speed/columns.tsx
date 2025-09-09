@@ -24,7 +24,7 @@ export const columns: Column<SpeedRecord & { rank: number }>[] = [
         name: "#",
         sortable: false,
         resizable: true,
-        width: 70,
+        width: 57,
         renderCell: ({ row }) => {
             return row.rank.toString();
         },
@@ -34,6 +34,7 @@ export const columns: Column<SpeedRecord & { rank: number }>[] = [
         name: "Name",
         sortable: true,
         resizable: true,
+        width: 190,
         renderCell: ({ row }) => {
             return `${row.rider_name} ${row.rider_surname}`;
         },
@@ -55,6 +56,42 @@ export const columns: Column<SpeedRecord & { rank: number }>[] = [
         renderCell: ({ row }) => {
             return row.max_speed.toFixed(2);
         },
+    },
+    {
+        key: "track",
+        name: "Track",
+        sortable: true,
+        resizable: true,
+    },
+    {
+        key: "date",
+        name: "Date",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            return new Date(row.date).toLocaleDateString();
+        },
+    },
+    {
+        key: "match",
+        name: "Match",
+        sortable: true,
+        resizable: true,
+    },
+    {
+        key: "heat",
+        name: "Heat No.",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            return row.heat;
+        },
+    },
+    {
+        key: "points",
+        name: "Points",
+        sortable: true,
+        resizable: true,
     },
     {
         key: "z_score",
@@ -89,42 +126,6 @@ export const columns: Column<SpeedRecord & { rank: number }>[] = [
             const sign = diff >= 0 ? "+" : "";
             return `${sign}${diff.toFixed(3)}`;
         },
-    },
-    {
-        key: "track",
-        name: "Track",
-        sortable: true,
-        resizable: true,
-    },
-    {
-        key: "date",
-        name: "Date",
-        sortable: true,
-        resizable: true,
-        renderCell: ({ row }) => {
-            return new Date(row.date).toLocaleDateString();
-        },
-    }, 
-    {
-        key: "match",
-        name: "Match",
-        sortable: true,
-        resizable: true,
-    },
-    {
-        key: "heat",
-        name: "Heat No.",
-        sortable: true,
-        resizable: true,
-        renderCell: ({ row }) => {
-            return row.heat;
-        },
-    },   
-    {
-        key: "points",
-        name: "Points",
-        sortable: true,
-        resizable: true,
     },    
     {
         key: "season",
