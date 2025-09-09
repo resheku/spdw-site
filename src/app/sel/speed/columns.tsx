@@ -13,6 +13,9 @@ export type SpeedRecord = {
     team: string | null;
     max_speed: number;
     track: string;
+    z_score: number;
+    track_avg_speed: number | string;
+    speed_diff: number | string;
 }
 
 export const columns: Column<SpeedRecord & { rank: number }>[] = [
@@ -51,6 +54,40 @@ export const columns: Column<SpeedRecord & { rank: number }>[] = [
         resizable: true,
         renderCell: ({ row }) => {
             return row.max_speed.toFixed(2);
+        },
+    },
+    {
+        key: "z_score",
+        name: "Z-Score",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const zScore = Number(row.z_score);
+            return isNaN(zScore) ? "N/A" : zScore.toFixed(3);
+        },
+    },
+    {
+        key: "track_avg_speed",
+        name: "Track Avg",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const avgSpeed = Number(row.track_avg_speed);
+            return isNaN(avgSpeed) ? "N/A" : avgSpeed.toFixed(2);
+        },
+    },
+    {
+        key: "speed_diff",
+        name: "Speed Diff",
+        sortable: true,
+        resizable: true,
+        renderCell: ({ row }) => {
+            const diff = Number(row.speed_diff);
+            if (isNaN(diff)) {
+                return "N/A";
+            }
+            const sign = diff >= 0 ? "+" : "";
+            return `${sign}${diff.toFixed(3)}`;
         },
     },
     {
