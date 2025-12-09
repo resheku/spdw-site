@@ -124,6 +124,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Liberation Mono", monospace !important;
   }
 }
 
@@ -179,5 +180,6 @@ h1 {
 .data-table, .data-table *,
 .rdg, .rdg *, */
 .spdw-data-table, .spdw-data-table * {
-  font-size: 12px !important;
+  font-size: 11px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Segoe UI Mono", "Liberation Mono", monospace !important;
 }
