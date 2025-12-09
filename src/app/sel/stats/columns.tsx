@@ -59,6 +59,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         key: "Average",
         name: "Average",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
         renderCell: ({ row }) => {
             const value = row.Average;
@@ -69,30 +70,35 @@ export const columns: Column<Stat & { rank: number }>[] = [
         key: "Match",
         name: "Match",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Heats",
         name: "Heats",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Points",
         name: "Points",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Bonus",
         name: "Bonus",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Home Avg.",
         name: "Home",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
         renderCell: ({ row }) => {
             const value = row["Home Avg."];
@@ -103,6 +109,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         key: "Away Avg.",
         name: "Away",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
         renderCell: ({ row }) => {
             const value = row["Away Avg."];
@@ -113,60 +120,70 @@ export const columns: Column<Stat & { rank: number }>[] = [
         key: "I",
         name: "I",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "II",
         name: "II",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "III",
         name: "III",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "IV",
         name: "IV",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "R",
         name: "R",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "T",
         name: "T",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "M",
         name: "M",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "X",
         name: "X",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Warn",
         name: "Warn",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
     {
         key: "Max Speed",
         name: "Speed",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
         renderCell: ({ row }) => {
             const value = row["Max Speed"];
@@ -177,6 +194,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         key: "Season",
         name: "Season",
         sortable: true,
+        sortDescendingFirst: true,
         resizable: true,
     },
 ]

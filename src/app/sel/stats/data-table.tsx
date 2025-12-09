@@ -257,6 +257,72 @@ export function DataTable<TData extends Record<string, any>>({
         })
     }, [columns, rankedData])
 
+    // Auto-hide these detailed numeric columns on small screens
+    const autoHideKeys = React.useMemo(() => new Set([
+        'I','II','III','IV','R','T','M','X','Warn'
+    ]), [])
+
+    // Additional keys to hide on even smaller screens
+    const extraHideKeys = React.useMemo(() => new Set([
+        'Match', 'Heats', 'Points', 'Bonus'
+    ]), [])
+
+    const [isNarrow, setIsNarrow] = React.useState<boolean>(() => {
+        if (typeof window === 'undefined') return false
+        return window.innerWidth < 1100
+    })
+
+    const [isExtraNarrow, setIsExtraNarrow] = React.useState<boolean>(() => {
+        if (typeof window === 'undefined') return false
+        return window.innerWidth < 800
+    })
+
+    // Allow user to override hiding on small screens
+    const [showHiddenColumns, setShowHiddenColumns] = React.useState<boolean>(false)
+
+    React.useEffect(() => {
+        function onResize() {
+            const w = window.innerWidth
+            setIsNarrow(w < 1100)
+            setIsExtraNarrow(w < 800)
+        }
+        window.addEventListener('resize', onResize)
+        onResize()
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
+
+    const finalColumns = React.useMemo(() => {
+        if (showHiddenColumns) return columnsWithDynamicRank
+        return columnsWithDynamicRank.filter((col) => {
+            try {
+                const keyStr = String((col as any).key)
+                if (isExtraNarrow && extraHideKeys.has(keyStr)) return false
+                if (isNarrow && autoHideKeys.has(keyStr)) return false
+            } catch {
+                // fallback: keep col
+            }
+            return true
+        })
+    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+
+    const hiddenCount = React.useMemo(() => {
+        if (showHiddenColumns) return 0
+        let count = 0
+        columnsWithDynamicRank.forEach((col) => {
+            try {
+                const keyStr = String((col as any).key)
+                if (isExtraNarrow && extraHideKeys.has(keyStr)) {
+                    count++
+                } else if (isNarrow && autoHideKeys.has(keyStr)) {
+                    count++
+                }
+            } catch {
+                // ignore
+            }
+        })
+        return count
+    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+
     const handleSeasonToggle = (season: number) => {
         const newSelectedSeasons = selectedSeasons.includes(season)
             ? selectedSeasons.filter(s => s !== season)
@@ -283,13 +349,13 @@ export function DataTable<TData extends Record<string, any>>({
 
     return (
         <div className="spdw-data-table">
-            <div className="flex items-center py-4 gap-4">
-                <div className="relative max-w-sm">
+            <div className="flex flex-col sm:flex-row items-center py-4 gap-4">
+                <div className="relative w-full sm:max-w-sm">
                     <Input
-                        placeholder="Search by name..."
-                        value={nameFilter}
-                        onChange={(event) => setNameFilter(event.target.value)}
-                        className="pr-8"
+                    placeholder="Search by name..."
+                    value={nameFilter}
+                    onChange={(event) => setNameFilter(event.target.value)}
+                    className="pr-8 w-full"
                     />
                     {nameFilter && (
                         <button
@@ -303,7 +369,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
+                        <Button variant="outline" className="w-full sm:w-auto">
                             Teams ({
                                 selectedTeams.length === 0
                                     ? 'All'
@@ -356,7 +422,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
+                        <Button variant="outline" className="w-full sm:w-auto">
                             Heats ({
                                 selectedHeatsRange.length === 2
                                     ? `${selectedHeatsRange[0]}-${selectedHeatsRange[1]}`
@@ -399,7 +465,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto">
+                        <Button variant="outline" className="w-full sm:w-auto sm:ml-auto">
                             Seasons ({
                                 selectedSeasons.length === 0
                                     ? 'All'
@@ -450,6 +516,16 @@ export function DataTable<TData extends Record<string, any>>({
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
+                {hiddenCount > 0 && (
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowHiddenColumns(v => !v)}
+                        className="w-full sm:w-auto sm:ml-2"
+                        aria-pressed={showHiddenColumns}
+                    >
+                        {showHiddenColumns ? 'Show all columns' : `Show ${hiddenCount} hidden columns`}
+                    </Button>
+                )}
             </div>
             {sortedData.length === 0 ? (
                 <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -464,7 +540,7 @@ export function DataTable<TData extends Record<string, any>>({
                     )}
                     <div className={isLoading ? "opacity-50" : ""}>
                         <DataGrid
-                            columns={columnsWithDynamicRank}
+                            columns={finalColumns}
                             rows={rankedData}
                             sortColumns={sortColumns}
                             onSortColumnsChange={setSortColumns}
