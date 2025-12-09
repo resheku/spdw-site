@@ -118,6 +118,10 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    font-size: 14px;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -169,4 +173,11 @@ h1 {
 .rdg-bordered .rdg-header-cell {
   border-bottom: 1px solid #e5e7eb !important;
   border-right: none !important;
+}
+/* Force font-size on table elements and common table components to override library styles */
+/* table, table *,
+.data-table, .data-table *,
+.rdg, .rdg *, */
+.spdw-data-table, .spdw-data-table * {
+  font-size: 12px !important;
 }

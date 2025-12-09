@@ -11,7 +11,11 @@ interface GenericTableProps<TData> {
 
 export function GenericTable<TData extends Record<string, any>>({ apiPath, children }: GenericTableProps<TData>) {
     const searchParams = useSearchParams()
-    const query = searchParams.toString().replace(/%2C/g, ',')
+    // Build query but exclude `sort` so client-side sorting (reflected in URL)
+    // does not trigger server refetches.
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('sort')
+    const query = params.toString().replace(/%2C/g, ',')
     const url = query ? `${apiPath}?${query}` : apiPath
 
     const { data, loading } = useCachedFetchWithParams(url)

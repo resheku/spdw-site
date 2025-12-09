@@ -80,7 +80,8 @@ export function DataTable<TData extends Record<string, any>>({
         window.history.replaceState({}, '', `?${queryString}`)
     }, [nameFilter, searchParams])
 
-    // Update URL when sortColumns changes
+    // Update URL when sortColumns changes so sorting is reflected in the URL
+    // but does not trigger server refetch because GenericTable strips `sort`.
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
 
@@ -90,7 +91,7 @@ export function DataTable<TData extends Record<string, any>>({
             params.delete('sort')
         }
 
-        // Convert URLSearchParams to string and decode all encoded characters for clean URLs
+        // Convert URLSearchParams to string and decode common characters for readability
         const queryString = params.toString()
             .replace(/%2C/g, ',')
             .replace(/%3A/g, ':')
@@ -228,6 +229,34 @@ export function DataTable<TData extends Record<string, any>>({
         }))
     }, [sortedData])
 
+    // Compute dynamic width for the `rank` column based on number of rows
+    const columnsWithDynamicRank = React.useMemo(() => {
+        // determine digits needed for largest rank
+        const rowCount = Array.isArray(rankedData) ? rankedData.length : 0
+        const digits = String(Math.max(1, rowCount)).length
+
+        // estimate width: approx 8-10px per digit plus padding
+        const perDigit = 10 // px per digit (reasonable default)
+        const padding = 12 // left + right padding
+        const calculated = digits * perDigit + padding
+
+        const minWidth = 24
+        const maxWidth = 120
+        const width = Math.min(maxWidth, Math.max(minWidth, calculated))
+
+        return columns.map((col) => {
+            if (col.key === "rank") {
+                return {
+                    ...col,
+                    width,
+                    minWidth,
+                    maxWidth,
+                }
+            }
+            return col
+        })
+    }, [columns, rankedData])
+
     const handleSeasonToggle = (season: number) => {
         const newSelectedSeasons = selectedSeasons.includes(season)
             ? selectedSeasons.filter(s => s !== season)
@@ -253,7 +282,7 @@ export function DataTable<TData extends Record<string, any>>({
     }
 
     return (
-        <div>
+        <div className="spdw-data-table">
             <div className="flex items-center py-4 gap-4">
                 <div className="relative max-w-sm">
                     <Input
@@ -435,7 +464,7 @@ export function DataTable<TData extends Record<string, any>>({
                     )}
                     <div className={isLoading ? "opacity-50" : ""}>
                         <DataGrid
-                            columns={columns}
+                            columns={columnsWithDynamicRank}
                             rows={rankedData}
                             sortColumns={sortColumns}
                             onSortColumnsChange={setSortColumns}

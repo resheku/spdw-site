@@ -30,12 +30,17 @@ export type Stat = {
 export const columns: Column<Stat & { rank: number }>[] = [
     {
         key: "rank",
-        name: "#",
+        name: (
+            <div className="text-right pr-2">#</div>
+        ),
         sortable: false,
         resizable: true,
-        width: 70,
         renderCell: ({ row }) => {
-            return row.rank.toString();
+            return (
+                <div className="text-right pr-2">
+                    {row.rank}
+                </div>
+            )
         },
     },
     {
