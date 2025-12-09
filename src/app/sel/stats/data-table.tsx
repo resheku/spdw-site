@@ -48,6 +48,9 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Initialize nameFilter from URL search params, keeping all existing functionality
     const [nameFilter, setNameFilter] = React.useState(() => searchParams.get('search') || "")
+    const nameInputRef = React.useRef<HTMLInputElement | null>(null)
+    const caretRef = React.useRef<{ start: number; end: number }>({ start: 0, end: 0 })
+    const pendingSearchRef = React.useRef<string | null>(null)
 
     // Initialize sortColumns from URL search params
     const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>(() => {
@@ -63,22 +66,40 @@ export function DataTable<TData extends Record<string, any>>({
         return []
     })
 
-    // Update URL when nameFilter changes (keeping the same client-side filtering)
-    React.useEffect(() => {
+    // Helper to apply search param to URL
+    const applySearchToUrl = React.useCallback((value: string) => {
         const params = new URLSearchParams(searchParams.toString())
-
-        if (nameFilter.trim()) {
-            params.set('search', nameFilter.trim())
+        if (value.trim()) {
+            params.set('search', value.trim())
         } else {
             params.delete('search')
         }
-
-        // Convert URLSearchParams to string and decode commas
         const queryString = params.toString().replace(/%2C/g, ',')
-
-        // Update URL without causing page navigation
         window.history.replaceState({}, '', `?${queryString}`)
-    }, [nameFilter, searchParams])
+    }, [searchParams])
+
+    // Update URL when nameFilter changes (debounced) but avoid updating while user is focused
+    React.useEffect(() => {
+        // Debounce URL updates to avoid updating history on every keystroke
+        const handle = window.setTimeout(() => {
+            // always update the URL so `search` stays in query string
+            applySearchToUrl(nameFilter)
+            pendingSearchRef.current = null
+
+            // restore focus & caret so typing remains uninterrupted
+            const input = nameInputRef.current
+            if (input) {
+                try {
+                    const start = Math.min(caretRef.current.start ?? 0, input.value.length)
+                    const end = Math.min(caretRef.current.end ?? start, input.value.length)
+                    input.focus()
+                    input.setSelectionRange(start, end)
+                } catch {}
+            }
+        }, 500)
+
+        return () => clearTimeout(handle)
+    }, [nameFilter, applySearchToUrl])
 
     // Update URL when sortColumns changes so sorting is reflected in the URL
     // but does not trigger server refetch because GenericTable strips `sort`.
@@ -337,9 +358,9 @@ export function DataTable<TData extends Record<string, any>>({
 
     const getColumnLabel = (col: any) => {
         if (!col) return ''
-        const name = col.name
+        const { name, key } = col
         if (typeof name === 'string') return name
-        return extractText(name) || String(col.key || '')
+        return extractText(name) || String(key || '')
     }
 
     const formatCellForCsv = (col: any, row: any) => {
@@ -351,7 +372,7 @@ export function DataTable<TData extends Record<string, any>>({
         } catch {
             // fall back
         }
-        const key = col.key
+        const { key } = col
         const raw = row?.[key]
         if (raw === null || raw === undefined) return ''
         return typeof raw === 'number' ? String(raw) : String(raw)
@@ -416,14 +437,57 @@ export function DataTable<TData extends Record<string, any>>({
         onTeamsChange([])
     }
 
+    // If the table data refreshes (e.g. after a fetch), reapply caret position
+    // but only if the input is still focused — this prevents stealing focus.
+    React.useEffect(() => {
+        const input = nameInputRef.current
+        if (!input) return
+        if (document.activeElement !== input) return
+        const max = input.value.length
+        const start = Math.min(caretRef.current.start ?? 0, max)
+        const end = Math.min(caretRef.current.end ?? start, max)
+        try {
+            input.setSelectionRange(start, end)
+        } catch {
+            // ignore
+        }
+    }, [rankedData])
+
     return (
         <div className="spdw-data-table">
             <div className="flex flex-col sm:flex-row items-center py-4 gap-4">
                 <div className="relative w-full sm:max-w-sm">
                     <Input
+                    ref={nameInputRef}
                     placeholder="Search by name..."
                     value={nameFilter}
-                    onChange={(event) => setNameFilter(event.target.value)}
+                    onChange={(event) => {
+                        const target = event.target as HTMLInputElement
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                        setNameFilter(target.value)
+                    }}
+                    onKeyDown={(e) => {
+                        const target = e.currentTarget as HTMLInputElement
+                        // keep caret up-to-date
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                        if (e.key === 'Enter') {
+                            e.preventDefault()
+                            applySearchToUrl(nameFilter)
+                            pendingSearchRef.current = null
+                        }
+                    }}
+                    onSelect={(e) => {
+                        const target = e.currentTarget as HTMLInputElement
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                    }}
+                    onBlur={() => {
+                        // apply any pending search when user leaves the field
+                        applySearchToUrl(pendingSearchRef.current ?? nameFilter)
+                        pendingSearchRef.current = null
+                    }}
                     className="pr-8 w-full"
                     />
                     {nameFilter && (
