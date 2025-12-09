@@ -305,8 +305,8 @@ export function DataTable<TData extends Record<string, any>>({
         })
     }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
 
-    const hiddenCount = React.useMemo(() => {
-        if (showHiddenColumns) return 0
+    // How many columns would be hidden by the responsive rules (regardless of current override)
+    const possibleHiddenCount = React.useMemo(() => {
         let count = 0
         columnsWithDynamicRank.forEach((col) => {
             try {
@@ -321,7 +321,76 @@ export function DataTable<TData extends Record<string, any>>({
             }
         })
         return count
-    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
+
+    // --- CSV export helpers ---
+    const extractText = (node: any): string => {
+        if (node === null || node === undefined) return ''
+        if (typeof node === 'string' || typeof node === 'number') return String(node)
+        if (Array.isArray(node)) return node.map(extractText).join('')
+        if (React.isValidElement(node)) {
+            const children = (node as any).props?.children
+            return extractText(children)
+        }
+        try { return String(node) } catch { return '' }
+    }
+
+    const getColumnLabel = (col: any) => {
+        if (!col) return ''
+        const name = col.name
+        if (typeof name === 'string') return name
+        return extractText(name) || String(col.key || '')
+    }
+
+    const formatCellForCsv = (col: any, row: any) => {
+        try {
+            if (typeof col.renderCell === 'function') {
+                const node = col.renderCell({ row })
+                return extractText(node)
+            }
+        } catch {
+            // fall back
+        }
+        const key = col.key
+        const raw = row?.[key]
+        if (raw === null || raw === undefined) return ''
+        return typeof raw === 'number' ? String(raw) : String(raw)
+    }
+
+    const toCsv = (rows: any[], cols: any[]) => {
+        const esc = (value: string) => {
+            if (value == null) return ''
+            const s = String(value)
+            if (s.includes('"')) return '"' + s.replace(/"/g, '""') + '"'
+            if (s.includes(',') || s.includes('\n') || s.includes('\r')) return '"' + s + '"'
+            return s
+        }
+
+        const header = cols.map(getColumnLabel)
+        const body = rows.map((r) => cols.map((c) => esc(formatCellForCsv(c, r))))
+        return [header.join(','), ...body.map(row => row.join(','))].join('\n')
+    }
+
+    const exportCsv = () => {
+        try {
+            const colsToExport = finalColumns
+            const rowsToExport = rankedData
+            const csv = toCsv(rowsToExport, colsToExport)
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const now = new Date()
+            const filename = `sel-stats-${now.toISOString().replace(/[:.]/g, '-')}.csv`
+            const a = document.createElement('a')
+            a.href = url
+            a.download = filename
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+        } catch (e) {
+            console.error('CSV export failed', e)
+        }
+    }
 
     const handleSeasonToggle = (season: number) => {
         const newSelectedSeasons = selectedSeasons.includes(season)
@@ -516,14 +585,17 @@ export function DataTable<TData extends Record<string, any>>({
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
-                {hiddenCount > 0 && (
+                <Button variant="outline" onClick={exportCsv} className="w-full sm:w-auto sm:ml-2">
+                    Export CSV
+                </Button>
+                {possibleHiddenCount > 0 && (
                     <Button
                         variant="outline"
                         onClick={() => setShowHiddenColumns(v => !v)}
                         className="w-full sm:w-auto sm:ml-2"
                         aria-pressed={showHiddenColumns}
                     >
-                        {showHiddenColumns ? 'Show all columns' : `Show ${hiddenCount} hidden columns`}
+                        {showHiddenColumns ? 'Hide columns' : `Show ${possibleHiddenCount} hidden columns`}
                     </Button>
                 )}
             </div>
