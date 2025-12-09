@@ -66,9 +66,14 @@ export function DataTable<TData extends Record<string, any>>({
         return []
     })
 
-    // Helper to apply search param to URL
-    const applySearchToUrl = React.useCallback((value: string) => {
-        const params = new URLSearchParams(searchParams.toString())
+    // DEPRECATED: earlier version used `searchParams` in a callback.
+    // Keeping no-op placeholder to avoid accidental references elsewhere.
+    // (Replaced below with a window.location-based implementation.)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _applySearchToUrl_deprecated = React.useCallback((_value: string) => {}, [])
+    // Helper to apply search param to URL (reads current window.location.search)
+    function applySearchToUrl(value: string) {
+        const params = new URLSearchParams(window.location.search)
         if (value.trim()) {
             params.set('search', value.trim())
         } else {
@@ -76,19 +81,22 @@ export function DataTable<TData extends Record<string, any>>({
         }
         const queryString = params.toString().replace(/%2C/g, ',')
         window.history.replaceState({}, '', `?${queryString}`)
-    }, [searchParams])
+    }
 
-    // Update URL when nameFilter changes (debounced) but avoid updating while user is focused
+    // Update URL when nameFilter changes (debounced). Do not depend on `searchParams`
+    // so unrelated URL changes (like sorting) don't re-run this effect.
     React.useEffect(() => {
+        const input = nameInputRef.current
+        const wasFocused = !!(input && document.activeElement === input)
+
         // Debounce URL updates to avoid updating history on every keystroke
         const handle = window.setTimeout(() => {
             // always update the URL so `search` stays in query string
             applySearchToUrl(nameFilter)
             pendingSearchRef.current = null
 
-            // restore focus & caret so typing remains uninterrupted
-            const input = nameInputRef.current
-            if (input) {
+            // restore focus & caret only if it was focused when the timer started
+            if (wasFocused && input) {
                 try {
                     const start = Math.min(caretRef.current.start ?? 0, input.value.length)
                     const end = Math.min(caretRef.current.end ?? start, input.value.length)
@@ -99,7 +107,7 @@ export function DataTable<TData extends Record<string, any>>({
         }, 500)
 
         return () => clearTimeout(handle)
-    }, [nameFilter, applySearchToUrl])
+    }, [nameFilter])
 
     // Update URL when sortColumns changes so sorting is reflected in the URL
     // but does not trigger server refetch because GenericTable strips `sort`.
