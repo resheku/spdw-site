@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { prefetchStatsForLink } from '@/lib/prefetchStats';
 import { useState, useEffect } from "react";
 import { useCachedFetch } from '@/lib/useCachedFetch';
 import {
@@ -72,13 +73,13 @@ export default function SELPage() {
         </Breadcrumb>
 
         <div className="space-y-8 w-full">
-          <h2 className="text-2xl font-bold mb-2">
-            <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">stats</Link>
+            <h2 className="text-2xl font-bold mb-2">
+            <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>stats</Link>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
-              titleElement={
-                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">
+                titleElement={
+                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>
                   {currentSeason ? `${currentSeason}` : "Averages"}
                 </Link>
               }
@@ -91,7 +92,7 @@ export default function SELPage() {
             {/* //TODO: update link to follow same rule as query and include the no heats filter */}
             <DashboardTable
               titleElement={
-                <Link href="/sel/stats" className="spdw-link">
+                <Link href="/sel/stats" className="spdw-link" onMouseEnter={() => prefetchStatsForLink('/sel/stats')} onFocus={() => prefetchStatsForLink('/sel/stats')}>
                   {seasonRange ? `${seasonRange}` : "All Time"}
                 </Link>
               }
