@@ -229,16 +229,6 @@ export const columns: Column<Stat & { rank: number }>[] = [
         },
     },
     {
-        key: "Max Speed",
-        name: "Speed",
-        sortable: true,
-        resizable: true,
-        renderCell: ({ row }) => {
-            const value = row["Max Speed"];
-            return value !== null ? value.toFixed(2) : "";
-        },
-    },
-    {
         key: "Season",
         name: <div className="text-right pr-2">Season</div>,
         sortable: true,
