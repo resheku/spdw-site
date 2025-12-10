@@ -42,3 +42,6 @@ next-env.d.ts
 
 NOTES.md
 INSTRUCTIONS.md
+
+sel*.sql
+sel*.sh
