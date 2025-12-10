@@ -241,11 +241,14 @@ export function DataTable<TData extends Record<string, any>>({
         // Ensure filteredData is always an array
         const safeFilteredData = Array.isArray(filteredData) ? filteredData : []
 
-        if (sortColumns.length === 0) return safeFilteredData
+        // Use requested sortColumns or default to Average DESC
+        const effectiveSort = (sortColumns && sortColumns.length > 0)
+            ? sortColumns
+            : [{ columnKey: 'Average', direction: 'DESC' }]
 
         return [...safeFilteredData].sort((a, b) => {
-            for (const sort of sortColumns) {
-                const { columnKey, direction } = sort
+            for (const sort of effectiveSort) {
+                const { columnKey, direction } = sort as any
                 const aValue = a[columnKey]
                 const bValue = b[columnKey]
 

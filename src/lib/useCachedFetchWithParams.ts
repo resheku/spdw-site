@@ -11,6 +11,12 @@ function getSecondsUntilNext10PMUTC() {
     return Math.floor((next10pm.getTime() - now.getTime()) / 1000);
 }
 
+type SeasonCache = {
+    bySeason: { [season: string]: any[] }
+    allLoaded: boolean
+    expiry: number
+}
+
 export function useCachedFetchWithParams(url: string) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -18,47 +24,148 @@ export function useCachedFetchWithParams(url: string) {
 
     useEffect(() => {
         let isMounted = true;
-        const cacheKey = `cache:${url}`;
-        const cached = localStorage.getItem(cacheKey);
-        if (cached) {
+        setLoading(true);
+
+        // safe URL parsing for relative urls
+        let urlObj: URL;
+        try {
+            urlObj = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+        } catch (e) {
+            // fallback: simple fetch
+            fetch(url)
+                .then(res => res.json())
+                .then(json => { if (isMounted) { setData(json); setLoading(false); } })
+                .catch(e => { if (isMounted) { setError(e); setLoading(false); } })
+            return () => { isMounted = false };
+        }
+
+        const apiPath = urlObj.pathname
+        const params = new URLSearchParams(urlObj.search)
+        const seasonParam = params.get('season')
+        const requestedSeasons: number[] | null = seasonParam ? seasonParam.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : null
+
+        // Scope cache by apiPath + other params (excluding season)
+        const paramsWithoutSeason = new URLSearchParams(params.toString())
+        paramsWithoutSeason.delete('season')
+        const scopeKey = `${apiPath}|${paramsWithoutSeason.toString()}`
+        const cacheKey = `seasonCache:${scopeKey}`
+
+        const cachedStr = localStorage.getItem(cacheKey)
+        let cache: SeasonCache | null = null
+        if (cachedStr) {
             try {
-                const { value, expiry } = JSON.parse(cached);
-                if (Date.now() < expiry) {
-                    setData(value);
-                    setLoading(false);
-                    return;
+                const parsed = JSON.parse(cachedStr) as SeasonCache
+                if (parsed.expiry && Date.now() < parsed.expiry) {
+                    cache = parsed
                 } else {
-                    localStorage.removeItem(cacheKey);
+                    localStorage.removeItem(cacheKey)
                 }
             } catch { }
         }
-        setLoading(true);
-        fetch(url)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error('Network error');
+
+        const dedupe = (arr: any[]) => {
+            const map = new Map<string, boolean>()
+            const out: any[] = []
+            for (const item of arr) {
+                const key = `${item?.Name ?? ''}::${item?.Season ?? ''}::${item?.Team ?? ''}`
+                if (!map.has(key)) { map.set(key, true); out.push(item) }
+            }
+            return out
+        }
+
+        const assembleForSeasons = (seasons: number[] | null) => {
+            if (!cache) return null
+            if (!seasons) {
+                if (!cache.allLoaded) return null
+                const merged: any[] = []
+                Object.values(cache.bySeason || {}).forEach(arr => merged.push(...arr))
+                return dedupe(merged)
+            }
+            const parts: any[] = []
+            for (const s of seasons) {
+                const arr = cache.bySeason?.[String(s)]
+                if (!arr) return null
+                parts.push(...arr)
+            }
+            return dedupe(parts)
+        }
+
+        // If cache satisfies the request, use it
+        const assembled = assembleForSeasons(requestedSeasons)
+        if (assembled) {
+            setData(assembled)
+            setLoading(false)
+            return () => { isMounted = false }
+        }
+
+        const fetchMissing = async () => {
+            try {
+                // If no seasons requested -> fetch all
+                if (!requestedSeasons) {
+                    const res = await fetch(url)
+                    if (!res.ok) throw new Error('Network error')
+                    const json = await res.json()
+                    if (!isMounted) return
+                    const newCache: SeasonCache = { bySeason: {}, allLoaded: true, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 }
+                    if (Array.isArray(json)) {
+                        for (const row of json) {
+                            const s = String(row?.Season ?? 'all')
+                            if (!newCache.bySeason[s]) newCache.bySeason[s] = []
+                            newCache.bySeason[s].push(row)
+                        }
+                    }
+                    localStorage.setItem(cacheKey, JSON.stringify(newCache))
+                    setData(dedupe(Array.isArray(json) ? json : []))
+                    setLoading(false)
+                    return
                 }
-                return res.json();
-            })
-            .then(json => {
-                if (!isMounted) {
-                    return;
+
+                // otherwise, fetch only missing seasons
+                const missing = requestedSeasons.filter(s => !(cache && cache.bySeason && cache.bySeason[String(s)]))
+                if (missing.length === 0) {
+                    const assem = assembleForSeasons(requestedSeasons)
+                    setData(assem)
+                    setLoading(false)
+                    return
                 }
-                setData(json);
-                setLoading(false);
-                // Set expiry to next 10PM UTC
-                const expiry = Date.now() + getSecondsUntilNext10PMUTC() * 1000;
-                localStorage.setItem(cacheKey, JSON.stringify({ value: json, expiry }));
-            })
-            .catch(e => {
-                if (!isMounted) {
-                    return;
+
+                const paramsForFetch = new URLSearchParams(params.toString())
+                paramsForFetch.set('season', missing.join(','))
+                const fetchUrl = `${apiPath}${paramsForFetch.toString() ? `?${paramsForFetch.toString().replace(/%2C/g, ',')}` : ''}`
+                const res = await fetch(fetchUrl)
+                if (!res.ok) throw new Error('Network error')
+                const json = await res.json()
+                if (!isMounted) return
+
+                const newCache: SeasonCache = cache ? { bySeason: { ...(cache.bySeason || {}) }, allLoaded: cache.allLoaded, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 } : { bySeason: {}, allLoaded: false, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 }
+                if (Array.isArray(json)) {
+                    for (const row of json) {
+                        const s = String(row?.Season ?? 'all')
+                        if (!newCache.bySeason[s]) newCache.bySeason[s] = []
+                        newCache.bySeason[s].push(row)
+                    }
                 }
-                setError(e);
-                setLoading(false);
-            });
-        return () => { isMounted = false; };
-    }, [url]);
+
+                localStorage.setItem(cacheKey, JSON.stringify(newCache))
+
+                // assemble final result for requestedSeasons
+                const parts: any[] = []
+                for (const s of requestedSeasons) {
+                    parts.push(...(newCache.bySeason[String(s)] || []))
+                }
+                setData(dedupe(parts))
+                setLoading(false)
+            } catch (e) {
+                if (!isMounted) return
+                setError(e)
+                setLoading(false)
+            }
+        }
+
+        fetchMissing()
+
+        return () => { isMounted = false }
+    }, [url])
 
     return { data, loading, error };
 }
