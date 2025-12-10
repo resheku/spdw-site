@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
-import { useSearchParams } from "next/navigation"
+import { useCallback, useMemo, useTransition } from "react"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 type Setter<T> = (value: T) => void
 
@@ -17,6 +17,9 @@ function parseCommaSeparatedStrings(value: string | null) {
 
 export function useTableParams() {
     const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
+    const [isPending, startTransition] = useTransition()
 
     const search = useMemo(() => searchParams.get('search') || '', [searchParams])
     const selectedSeasons = useMemo(() => parseCommaSeparatedNumbers(searchParams.get('season')), [searchParams])
@@ -39,16 +42,23 @@ export function useTableParams() {
 
     const updateParam = useCallback((key: string, value: string | null) => {
         const params = new URLSearchParams(searchParams.toString())
+        
+        // Check if update is actually needed
+        const currentValue = params.get(key)
         if (value === null || value === '') {
+            if (!currentValue) return // Already empty, no update needed
             params.delete(key)
         } else {
+            if (currentValue === value) return // Already has this value, no update needed
             params.set(key, value)
         }
 
         // decode commas for nicer URLs
         const queryString = params.toString().replace(/%2C/g, ',')
-        window.history.replaceState({}, '', `?${queryString}`)
-    }, [searchParams])
+        startTransition(() => {
+            router.replace(`${pathname}?${queryString}`, { scroll: false })
+        })
+    }, [searchParams, router, pathname, startTransition])
 
     const setSearch: Setter<string> = useCallback((v: string) => updateParam('search', v.trim() || null), [updateParam])
     const setSeasons: Setter<number[]> = useCallback((arr: number[]) => updateParam('season', arr.length ? arr.join(',') : null), [updateParam])
