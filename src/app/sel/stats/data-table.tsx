@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { DataGrid, Column, SortColumn } from "react-data-grid"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -45,6 +45,8 @@ export function DataTable<TData extends Record<string, any>>({
     isLoading = false,
 }: DataTableProps<TData>) {
     const searchParams = useSearchParams()
+    const router = useRouter()
+    const pathname = usePathname()
 
     // Initialize nameFilter from URL search params, keeping all existing functionality
     const [nameFilter, setNameFilter] = React.useState(() => searchParams.get('search') || "")
@@ -71,17 +73,24 @@ export function DataTable<TData extends Record<string, any>>({
     // (Replaced below with a window.location-based implementation.)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _applySearchToUrl_deprecated = React.useCallback((_value: string) => {}, [])
-    // Helper to apply search param to URL (reads current window.location.search)
-    function applySearchToUrl(value: string) {
-        const params = new URLSearchParams(window.location.search)
-        if (value.trim()) {
-            params.set('search', value.trim())
+    // Helper to apply search param to URL (reads current searchParams)
+    const applySearchToUrl = React.useCallback((value: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        const trimmedValue = value.trim()
+        const currentSearch = params.get('search')
+        
+        // Only update if value actually changed
+        if (trimmedValue) {
+            if (currentSearch === trimmedValue) return
+            params.set('search', trimmedValue)
         } else {
+            if (!currentSearch) return
             params.delete('search')
         }
+        
         const queryString = params.toString().replace(/%2C/g, ',')
-        window.history.replaceState({}, '', `?${queryString}`)
-    }
+        router.replace(`${pathname}?${queryString}`, { scroll: false })
+    }, [searchParams, router, pathname])
 
     // Update URL when nameFilter changes (debounced). Do not depend on `searchParams`
     // so unrelated URL changes (like sorting) don't re-run this effect.
@@ -113,10 +122,15 @@ export function DataTable<TData extends Record<string, any>>({
     // but does not trigger server refetch because GenericTable strips `sort`.
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
+        const newSortValue = sortColumns.length > 0 ? JSON.stringify(sortColumns) : null
+        const currentSortValue = params.get('sort')
 
-        if (sortColumns.length > 0) {
-            params.set('sort', JSON.stringify(sortColumns))
+        // Only update if sort actually changed
+        if (newSortValue) {
+            if (currentSortValue === newSortValue) return
+            params.set('sort', newSortValue)
         } else {
+            if (!currentSortValue) return
             params.delete('sort')
         }
 
@@ -131,8 +145,8 @@ export function DataTable<TData extends Record<string, any>>({
             .replace(/%7D/g, '}')
 
         // Update URL without causing page navigation
-        window.history.replaceState({}, '', `?${queryString}`)
-    }, [sortColumns, searchParams])
+        router.replace(`${pathname}?${queryString}`, { scroll: false })
+    }, [sortColumns, searchParams, router, pathname])
 
     // Calculate heats range from data only when data changes (e.g., season filter changes)
     const heatsRange = React.useMemo(() => {
