@@ -48,6 +48,9 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Initialize nameFilter from URL search params, keeping all existing functionality
     const [nameFilter, setNameFilter] = React.useState(() => searchParams.get('search') || "")
+    const nameInputRef = React.useRef<HTMLInputElement | null>(null)
+    const caretRef = React.useRef<{ start: number; end: number }>({ start: 0, end: 0 })
+    const pendingSearchRef = React.useRef<string | null>(null)
 
     // Initialize sortColumns from URL search params
     const [sortColumns, setSortColumns] = React.useState<readonly SortColumn[]>(() => {
@@ -63,24 +66,51 @@ export function DataTable<TData extends Record<string, any>>({
         return []
     })
 
-    // Update URL when nameFilter changes (keeping the same client-side filtering)
-    React.useEffect(() => {
-        const params = new URLSearchParams(searchParams.toString())
-
-        if (nameFilter.trim()) {
-            params.set('search', nameFilter.trim())
+    // DEPRECATED: earlier version used `searchParams` in a callback.
+    // Keeping no-op placeholder to avoid accidental references elsewhere.
+    // (Replaced below with a window.location-based implementation.)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _applySearchToUrl_deprecated = React.useCallback((_value: string) => {}, [])
+    // Helper to apply search param to URL (reads current window.location.search)
+    function applySearchToUrl(value: string) {
+        const params = new URLSearchParams(window.location.search)
+        if (value.trim()) {
+            params.set('search', value.trim())
         } else {
             params.delete('search')
         }
-
-        // Convert URLSearchParams to string and decode commas
         const queryString = params.toString().replace(/%2C/g, ',')
-
-        // Update URL without causing page navigation
         window.history.replaceState({}, '', `?${queryString}`)
-    }, [nameFilter, searchParams])
+    }
 
-    // Update URL when sortColumns changes
+    // Update URL when nameFilter changes (debounced). Do not depend on `searchParams`
+    // so unrelated URL changes (like sorting) don't re-run this effect.
+    React.useEffect(() => {
+        const input = nameInputRef.current
+        const wasFocused = !!(input && document.activeElement === input)
+
+        // Debounce URL updates to avoid updating history on every keystroke
+        const handle = window.setTimeout(() => {
+            // always update the URL so `search` stays in query string
+            applySearchToUrl(nameFilter)
+            pendingSearchRef.current = null
+
+            // restore focus & caret only if it was focused when the timer started
+            if (wasFocused && input) {
+                try {
+                    const start = Math.min(caretRef.current.start ?? 0, input.value.length)
+                    const end = Math.min(caretRef.current.end ?? start, input.value.length)
+                    input.focus()
+                    input.setSelectionRange(start, end)
+                } catch {}
+            }
+        }, 500)
+
+        return () => clearTimeout(handle)
+    }, [nameFilter])
+
+    // Update URL when sortColumns changes so sorting is reflected in the URL
+    // but does not trigger server refetch because GenericTable strips `sort`.
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
 
@@ -90,7 +120,7 @@ export function DataTable<TData extends Record<string, any>>({
             params.delete('sort')
         }
 
-        // Convert URLSearchParams to string and decode all encoded characters for clean URLs
+        // Convert URLSearchParams to string and decode common characters for readability
         const queryString = params.toString()
             .replace(/%2C/g, ',')
             .replace(/%3A/g, ':')
@@ -228,6 +258,169 @@ export function DataTable<TData extends Record<string, any>>({
         }))
     }, [sortedData])
 
+    // Compute dynamic width for the `rank` column based on number of rows
+    const columnsWithDynamicRank = React.useMemo(() => {
+        // determine digits needed for largest rank
+        const rowCount = Array.isArray(rankedData) ? rankedData.length : 0
+        const digits = String(Math.max(1, rowCount)).length
+
+        // estimate width: approx 8-10px per digit plus padding
+        const perDigit = 10 // px per digit (reasonable default)
+        const padding = 12 // left + right padding
+        const calculated = digits * perDigit + padding
+
+        const minWidth = 24
+        const maxWidth = 120
+        const width = Math.min(maxWidth, Math.max(minWidth, calculated))
+
+        return columns.map((col) => {
+            if (col.key === "rank") {
+                return {
+                    ...col,
+                    width,
+                    minWidth,
+                    maxWidth,
+                }
+            }
+            return col
+        })
+    }, [columns, rankedData])
+
+    // Auto-hide these detailed numeric columns on small screens
+    const autoHideKeys = React.useMemo(() => new Set([
+        'I','II','III','IV','R','T','M','X','Warn'
+    ]), [])
+
+    // Additional keys to hide on even smaller screens
+    const extraHideKeys = React.useMemo(() => new Set([
+        'Match', 'Heats', 'Points', 'Bonus'
+    ]), [])
+
+    const [isNarrow, setIsNarrow] = React.useState<boolean>(() => {
+        if (typeof window === 'undefined') return false
+        return window.innerWidth < 1100
+    })
+
+    const [isExtraNarrow, setIsExtraNarrow] = React.useState<boolean>(() => {
+        if (typeof window === 'undefined') return false
+        return window.innerWidth < 800
+    })
+
+    // Allow user to override hiding on small screens
+    const [showHiddenColumns, setShowHiddenColumns] = React.useState<boolean>(false)
+
+    React.useEffect(() => {
+        function onResize() {
+            const w = window.innerWidth
+            setIsNarrow(w < 1100)
+            setIsExtraNarrow(w < 800)
+        }
+        window.addEventListener('resize', onResize)
+        onResize()
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
+
+    const finalColumns = React.useMemo(() => {
+        if (showHiddenColumns) return columnsWithDynamicRank
+        return columnsWithDynamicRank.filter((col) => {
+            try {
+                const keyStr = String((col as any).key)
+                if (isExtraNarrow && extraHideKeys.has(keyStr)) return false
+                if (isNarrow && autoHideKeys.has(keyStr)) return false
+            } catch {
+                // fallback: keep col
+            }
+            return true
+        })
+    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+
+    // How many columns would be hidden by the responsive rules (regardless of current override)
+    const possibleHiddenCount = React.useMemo(() => {
+        let count = 0
+        columnsWithDynamicRank.forEach((col) => {
+            try {
+                const keyStr = String((col as any).key)
+                if (isExtraNarrow && extraHideKeys.has(keyStr)) {
+                    count++
+                } else if (isNarrow && autoHideKeys.has(keyStr)) {
+                    count++
+                }
+            } catch {
+                // ignore
+            }
+        })
+        return count
+    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
+
+    // --- CSV export helpers ---
+    const extractText = (node: any): string => {
+        if (node === null || node === undefined) return ''
+        if (typeof node === 'string' || typeof node === 'number') return String(node)
+        if (Array.isArray(node)) return node.map(extractText).join('')
+        if (React.isValidElement(node)) {
+            const children = (node as any).props?.children
+            return extractText(children)
+        }
+        try { return String(node) } catch { return '' }
+    }
+
+    const getColumnLabel = (col: any) => {
+        if (!col) return ''
+        const { name, key } = col
+        if (typeof name === 'string') return name
+        return extractText(name) || String(key || '')
+    }
+
+    const formatCellForCsv = (col: any, row: any) => {
+        try {
+            if (typeof col.renderCell === 'function') {
+                const node = col.renderCell({ row })
+                return extractText(node)
+            }
+        } catch {
+            // fall back
+        }
+        const { key } = col
+        const raw = row?.[key]
+        if (raw === null || raw === undefined) return ''
+        return typeof raw === 'number' ? String(raw) : String(raw)
+    }
+
+    const toCsv = (rows: any[], cols: any[]) => {
+        const esc = (value: string) => {
+            if (value == null) return ''
+            const s = String(value)
+            if (s.includes('"')) return '"' + s.replace(/"/g, '""') + '"'
+            if (s.includes(',') || s.includes('\n') || s.includes('\r')) return '"' + s + '"'
+            return s
+        }
+
+        const header = cols.map(getColumnLabel)
+        const body = rows.map((r) => cols.map((c) => esc(formatCellForCsv(c, r))))
+        return [header.join(','), ...body.map(row => row.join(','))].join('\n')
+    }
+
+    const exportCsv = () => {
+        try {
+            const colsToExport = finalColumns
+            const rowsToExport = rankedData
+            const csv = toCsv(rowsToExport, colsToExport)
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const now = new Date()
+            const filename = `sel-stats-${now.toISOString().replace(/[:.]/g, '-')}.csv`
+            const a = document.createElement('a')
+            a.href = url
+            a.download = filename
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+        } catch (e) {
+            console.error('CSV export failed', e)
+        }
+    }
+
     const handleSeasonToggle = (season: number) => {
         const newSelectedSeasons = selectedSeasons.includes(season)
             ? selectedSeasons.filter(s => s !== season)
@@ -252,15 +445,58 @@ export function DataTable<TData extends Record<string, any>>({
         onTeamsChange([])
     }
 
+    // If the table data refreshes (e.g. after a fetch), reapply caret position
+    // but only if the input is still focused — this prevents stealing focus.
+    React.useEffect(() => {
+        const input = nameInputRef.current
+        if (!input) return
+        if (document.activeElement !== input) return
+        const max = input.value.length
+        const start = Math.min(caretRef.current.start ?? 0, max)
+        const end = Math.min(caretRef.current.end ?? start, max)
+        try {
+            input.setSelectionRange(start, end)
+        } catch {
+            // ignore
+        }
+    }, [rankedData])
+
     return (
-        <div>
-            <div className="flex items-center py-4 gap-4">
-                <div className="relative max-w-sm">
+        <div className="spdw-data-table">
+            <div className="flex flex-col sm:flex-row items-center py-4 gap-4">
+                <div className="relative w-full sm:max-w-sm">
                     <Input
-                        placeholder="Search by name..."
-                        value={nameFilter}
-                        onChange={(event) => setNameFilter(event.target.value)}
-                        className="pr-8"
+                    ref={nameInputRef}
+                    placeholder="Search by name..."
+                    value={nameFilter}
+                    onChange={(event) => {
+                        const target = event.target as HTMLInputElement
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                        setNameFilter(target.value)
+                    }}
+                    onKeyDown={(e) => {
+                        const target = e.currentTarget as HTMLInputElement
+                        // keep caret up-to-date
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                        if (e.key === 'Enter') {
+                            e.preventDefault()
+                            applySearchToUrl(nameFilter)
+                            pendingSearchRef.current = null
+                        }
+                    }}
+                    onSelect={(e) => {
+                        const target = e.currentTarget as HTMLInputElement
+                        caretRef.current.start = target.selectionStart ?? target.value.length
+                        caretRef.current.end = target.selectionEnd ?? target.value.length
+                    }}
+                    onBlur={() => {
+                        // apply any pending search when user leaves the field
+                        applySearchToUrl(pendingSearchRef.current ?? nameFilter)
+                        pendingSearchRef.current = null
+                    }}
+                    className="pr-8 w-full"
                     />
                     {nameFilter && (
                         <button
@@ -274,7 +510,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
+                        <Button variant="outline" className="w-full sm:w-auto">
                             Teams ({
                                 selectedTeams.length === 0
                                     ? 'All'
@@ -327,7 +563,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
+                        <Button variant="outline" className="w-full sm:w-auto">
                             Heats ({
                                 selectedHeatsRange.length === 2
                                     ? `${selectedHeatsRange[0]}-${selectedHeatsRange[1]}`
@@ -370,7 +606,7 @@ export function DataTable<TData extends Record<string, any>>({
                 </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="ml-auto">
+                        <Button variant="outline" className="w-full sm:w-auto sm:ml-auto">
                             Seasons ({
                                 selectedSeasons.length === 0
                                     ? 'All'
@@ -421,6 +657,19 @@ export function DataTable<TData extends Record<string, any>>({
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <Button variant="outline" onClick={exportCsv} className="w-full sm:w-auto sm:ml-2">
+                    Export CSV
+                </Button>
+                {possibleHiddenCount > 0 && (
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowHiddenColumns(v => !v)}
+                        className="w-full sm:w-auto sm:ml-2"
+                        aria-pressed={showHiddenColumns}
+                    >
+                        {showHiddenColumns ? 'Hide columns' : `Show ${possibleHiddenCount} hidden columns`}
+                    </Button>
+                )}
             </div>
             {sortedData.length === 0 ? (
                 <div className="rounded-md border p-8 text-center text-muted-foreground">
@@ -435,7 +684,7 @@ export function DataTable<TData extends Record<string, any>>({
                     )}
                     <div className={isLoading ? "opacity-50" : ""}>
                         <DataGrid
-                            columns={columns}
+                            columns={finalColumns}
                             rows={rankedData}
                             sortColumns={sortColumns}
                             onSortColumnsChange={setSortColumns}
