@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { prefetchStatsForLink } from '@/lib/prefetchStats';
 import { useState, useEffect } from "react";
 import { useCachedFetch } from '@/lib/useCachedFetch';
 import {
@@ -27,9 +28,96 @@ export default function SELPage() {
   const { data: telemetrySeasons, loading: loadingTelemetrySeasons } = useCachedFetch('/api/sel/dashboard/max-speeds/telem-seasons') as { data: unknown, loading: boolean };
   const { data: bestAveragesThisSeason, loading: loadingBestAveragesThisSeason } = useCachedFetch(`/api/sel/dashboard/best-averages?season=${currentSeason}`) as { data: unknown, loading: boolean };
   const { data: bestAveragesAllTime, loading: loadingBestAveragesAllTime } = useCachedFetch('/api/sel/dashboard/best-averages?season=all') as { data: unknown, loading: boolean };
-  const { data: maxSpeedsThisSeason, loading: loadingMaxSpeedsThisSeason } = useCachedFetch(`/api/sel/dashboard/max-speeds?season=${currentSeason}`) as { data: unknown, loading: boolean };
-  const { data: maxSpeedsAllTime, loading: loadingMaxSpeedsAllTime } = useCachedFetch('/api/sel/dashboard/max-speeds?season=all') as { data: unknown, loading: boolean };
+  const [maxSpeedsThisSeason, setMaxSpeedsThisSeason] = useState<any[] | null>(null)
+  const [loadingMaxSpeedsThisSeason, setLoadingMaxSpeedsThisSeason] = useState<boolean>(false)
+  const [maxSpeedsAllTime, setMaxSpeedsAllTime] = useState<any[] | null>(null)
+  const [loadingMaxSpeedsAllTime, setLoadingMaxSpeedsAllTime] = useState<boolean>(false)
+
   const isLoading = loadingSeasons || loadingTelemetrySeasons || loadingBestAveragesThisSeason || loadingBestAveragesAllTime || loadingMaxSpeedsThisSeason || loadingMaxSpeedsAllTime;
+
+  // Lazy fetch lower-priority max speed tables after top tables load
+  useEffect(() => {
+    let cancelled = false
+    const getSecondsUntilNext10PMUTC = () => {
+      const now = new Date();
+      const next10pm = new Date(now);
+      next10pm.setUTCHours(22, 0, 0, 0);
+      if (now >= next10pm) next10pm.setUTCDate(next10pm.getUTCDate() + 1);
+      return Math.floor((next10pm.getTime() - now.getTime()) / 1000);
+    }
+
+    async function fetchMaxSpeeds() {
+      try {
+        // first table: max speeds this season
+        const urlThis = `/api/sel/dashboard/max-speeds?season=${currentSeason}`
+        const cacheKeyThis = `cache:${urlThis}`
+        const cachedThis = localStorage.getItem(cacheKeyThis)
+        if (cachedThis) {
+          try {
+            const parsed = JSON.parse(cachedThis)
+            if (parsed?.expiry && Date.now() < parsed.expiry) {
+              if (!cancelled) setMaxSpeedsThisSeason(parsed.value || [])
+            } else {
+              localStorage.removeItem(cacheKeyThis)
+            }
+          } catch {}
+        }
+
+        if (!cachedThis) {
+          setLoadingMaxSpeedsThisSeason(true)
+          const res = await fetch(urlThis)
+          if (!res.ok) throw new Error('Network error')
+          const json = await res.json()
+          if (!cancelled) setMaxSpeedsThisSeason(Array.isArray(json) ? json : [])
+          try {
+            const expiry = Date.now() + getSecondsUntilNext10PMUTC() * 1000
+            localStorage.setItem(cacheKeyThis, JSON.stringify({ value: json, expiry }))
+          } catch {}
+          setLoadingMaxSpeedsThisSeason(false)
+        }
+
+        // second table: max speeds all time
+        const urlAll = `/api/sel/dashboard/max-speeds?season=all`
+        const cacheKeyAll = `cache:${urlAll}`
+        const cachedAll = localStorage.getItem(cacheKeyAll)
+        if (cachedAll) {
+          try {
+            const parsed = JSON.parse(cachedAll)
+            if (parsed?.expiry && Date.now() < parsed.expiry) {
+              if (!cancelled) setMaxSpeedsAllTime(parsed.value || [])
+            } else {
+              localStorage.removeItem(cacheKeyAll)
+            }
+          } catch {}
+        }
+
+        if (!cachedAll) {
+          setLoadingMaxSpeedsAllTime(true)
+          const res2 = await fetch(urlAll)
+          if (!res2.ok) throw new Error('Network error')
+          const json2 = await res2.json()
+          if (!cancelled) setMaxSpeedsAllTime(Array.isArray(json2) ? json2 : [])
+          try {
+            const expiry = Date.now() + getSecondsUntilNext10PMUTC() * 1000
+            localStorage.setItem(cacheKeyAll, JSON.stringify({ value: json2, expiry }))
+          } catch {}
+          setLoadingMaxSpeedsAllTime(false)
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLoadingMaxSpeedsThisSeason(false)
+          setLoadingMaxSpeedsAllTime(false)
+        }
+      }
+    }
+
+    // start fetching when at least one top table is loaded (prioritize perceived speed)
+    if (!loadingBestAveragesThisSeason && !loadingBestAveragesAllTime) {
+      fetchMaxSpeeds()
+    }
+
+    return () => { cancelled = true }
+  }, [currentSeason, loadingBestAveragesThisSeason, loadingBestAveragesAllTime])
   // Compute season range and max speed range from cached data
   let seasonRange = '';
   if (Array.isArray(seasons) && (seasons as any[]).length > 0) {
@@ -72,13 +160,13 @@ export default function SELPage() {
         </Breadcrumb>
 
         <div className="space-y-8 w-full">
-          <h2 className="text-2xl font-bold mb-2">
-            <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">stats</Link>
+            <h2 className="text-2xl font-bold mb-2">
+            <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>stats</Link>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
-              titleElement={
-                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link">
+                titleElement={
+                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>
                   {currentSeason ? `${currentSeason}` : "Averages"}
                 </Link>
               }
@@ -91,7 +179,7 @@ export default function SELPage() {
             {/* //TODO: update link to follow same rule as query and include the no heats filter */}
             <DashboardTable
               titleElement={
-                <Link href="/sel/stats" className="spdw-link">
+                <Link href="/sel/stats" className="spdw-link" onMouseEnter={() => prefetchStatsForLink('/sel/stats')} onFocus={() => prefetchStatsForLink('/sel/stats')}>
                   {seasonRange ? `${seasonRange}` : "All Time"}
                 </Link>
               }

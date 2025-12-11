@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PrefetchSelLink from '@/components/prefetch-sel-link';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +22,7 @@ export default function Home() {
       <div className="content-area">
         <h1>spdw</h1>
         <br />
-        <Link href="/sel" className="spdw-link">sel</Link>
+        <PrefetchSelLink href="/sel" className="spdw-link">sel</PrefetchSelLink>
       </div>
     </>
   );
