@@ -20,24 +20,29 @@ import GenericTable from '@/components/ui/generic-table'
 function SelStatsContent() {
     const { data: availableSeasonsRaw, loading: loadingSeasons } = useCachedFetch('/api/sel/stats/seasons') as { data: unknown, loading: boolean };
     const { data: availableTeamsRaw, loading: loadingTeams } = useCachedFetch('/api/sel/stats/teams') as { data: unknown, loading: boolean };
+    const { data: availableLeaguesRaw, loading: loadingLeagues } = useCachedFetch('/api/sel/stats/leagues') as { data: unknown, loading: boolean };
     // Ensure seasons are numbers (API returns them, but ensure type consistency)
     const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) 
         ? availableSeasonsRaw.map(s => typeof s === 'number' ? s : parseInt(String(s))).filter(n => !isNaN(n))
         : [];
     const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw.map(t => String(t)) : [];
+    const availableLeagues: string[] = Array.isArray(availableLeaguesRaw) ? availableLeaguesRaw.map(l => String(l)) : [];
     const {
         search,
         selectedSeasons,
         selectedTeams,
+        selectedLeagues,
         selectedHeatsRange,
         setSearch,
         setSeasons,
         setTeams,
+        setLeagues,
         setHeats,
     } = useTableParams();
 
     const handleSeasonsChange = setSeasons
     const handleTeamsChange = setTeams
+    const handleLeaguesChange = setLeagues
     const handleHeatsRangeChange = setHeats
 
     return (
@@ -58,6 +63,9 @@ function SelStatsContent() {
                             availableTeams={availableTeams}
                             selectedTeams={selectedTeams}
                             onTeamsChange={handleTeamsChange}
+                            availableLeagues={availableLeagues}
+                            selectedLeagues={selectedLeagues}
+                            onLeaguesChange={handleLeaguesChange}
                             selectedHeatsRange={selectedHeatsRange}
                             onHeatsRangeChange={handleHeatsRangeChange}
                             isLoading={fetchedLoading}

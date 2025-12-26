@@ -6,6 +6,7 @@ export type Stat = {
     Season: number;
     Name: string;
     Team: string;
+    League: string;
     Average: number;
     Match: string;
     Heats: number;
@@ -235,5 +236,11 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortDescendingFirst: true,
         resizable: true,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.Season ?? ''}</div>,
+    },
+    {
+        key: "League",
+        name: "League",
+        sortable: true,
+        resizable: true,
     },
 ]

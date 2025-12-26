@@ -26,6 +26,9 @@ interface DataTableProps<TData> {
     availableTeams: string[]
     selectedTeams: string[]
     onTeamsChange: (teams: string[]) => void
+    availableLeagues: string[]
+    selectedLeagues: string[]
+    onLeaguesChange: (leagues: string[]) => void
     selectedHeatsRange: number[]
     onHeatsRangeChange: (heatsRange: number[]) => void
     isLoading?: boolean
@@ -40,6 +43,9 @@ export function DataTable<TData extends Record<string, any>>({
     availableTeams,
     selectedTeams,
     onTeamsChange,
+    availableLeagues,
+    selectedLeagues,
+    onLeaguesChange,
     selectedHeatsRange,
     onHeatsRangeChange,
     isLoading = false,
@@ -462,6 +468,18 @@ export function DataTable<TData extends Record<string, any>>({
         onTeamsChange([])
     }
 
+    const handleLeagueToggle = (league: string) => {
+        const newSelectedLeagues = selectedLeagues.includes(league)
+            ? selectedLeagues.filter(l => l !== league)
+            : [...selectedLeagues, league]
+
+        onLeaguesChange(newSelectedLeagues)
+    }
+
+    const clearAllLeagues = () => {
+        onLeaguesChange([])
+    }
+
     // If the table data refreshes (e.g. after a fetch), reapply caret position
     // but only if the input is still focused — this prevents stealing focus.
     React.useEffect(() => {
@@ -573,6 +591,59 @@ export function DataTable<TData extends Record<string, any>>({
                                     }}
                                 >
                                     {team}
+                                </button>
+                            </div>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            Leagues ({
+                                selectedLeagues.length === 0
+                                    ? 'All'
+                                    : selectedLeagues.length === 1
+                                        ? selectedLeagues[0]
+                                        : selectedLeagues.length
+                            })
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Filter by League</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {selectedLeagues.length > 0 && (
+                            <>
+                                <DropdownMenuCheckboxItem
+                                    className="text-red-600"
+                                    checked={false}
+                                    onCheckedChange={clearAllLeagues}
+                                >
+                                    Clear all leagues
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
+                        {availableLeagues.map((league) => (
+                            <div
+                                key={league}
+                                className="relative flex cursor-default items-center rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedLeagues.includes(league)}
+                                    onChange={() => handleLeagueToggle(league)}
+                                    className="mr-2 size-4 cursor-pointer accent-primary"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                    className="underline underline-offset-2 hover:no-underline text-left flex-1"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onLeaguesChange([league]);
+                                    }}
+                                >
+                                    {league}
                                 </button>
                             </div>
                         ))}

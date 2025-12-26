@@ -161,12 +161,12 @@ export default function SELPage() {
 
         <div className="space-y-8 w-full">
             <h2 className="text-2xl font-bold mb-2">
-            <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>stats</Link>
+            <Link href={`/sel/stats?season=${currentSeason}&league=PGEE`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)}>stats</Link>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
                 titleElement={
-                <Link href={`/sel/stats?season=${currentSeason}`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}`)}>
+                <Link href={`/sel/stats?season=${currentSeason}&league=PGEE`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)}>
                   {currentSeason ? `${currentSeason}` : "Averages"}
                 </Link>
               }
@@ -179,7 +179,7 @@ export default function SELPage() {
             {/* //TODO: update link to follow same rule as query and include the no heats filter */}
             <DashboardTable
               titleElement={
-                <Link href="/sel/stats" className="spdw-link" onMouseEnter={() => prefetchStatsForLink('/sel/stats')} onFocus={() => prefetchStatsForLink('/sel/stats')}>
+                <Link href="/sel/stats?league=PGEE" className="spdw-link" onMouseEnter={() => prefetchStatsForLink('/sel/stats?league=PGEE')} onFocus={() => prefetchStatsForLink('/sel/stats?league=PGEE')}>
                   {seasonRange ? `${seasonRange}` : "All Time"}
                 </Link>
               }

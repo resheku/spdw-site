@@ -7,12 +7,14 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const seasonsParam = searchParams.get('season');
         const teamsParam = searchParams.get('team');
+        const leaguesParam = searchParams.get('league');
 
         let data: any[];
 
         // Build WHERE conditions based on filters
         let seasonFilter: number[] | null = null;
         let teamFilter: string[] | null = null;
+        let leagueFilter: string[] | null = null;
 
         // Handle seasons filter
         if (seasonsParam) {
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
                 const availableSeasons = await sql`
                     SELECT DISTINCT "Season" 
                     FROM sel.stats
-                    WHERE "Season" IS NOT NULL AND "League" = 'PGEE'
+                    WHERE "Season" IS NOT NULL
                 `;
                 const validSeasons = availableSeasons.map(row => row.Season);
                 const filteredSeasons = requestedSeasons.filter(season => validSeasons.includes(season));
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
                 const availableTeams = await sql`
                     SELECT DISTINCT "Team" 
                     FROM sel.stats
-                    WHERE "Team" IS NOT NULL AND "League" = 'PGEE'
+                    WHERE "Team" IS NOT NULL
                 `;
                 const validTeams = availableTeams.map(row => row.Team);
                 const filteredTeams = requestedTeams.filter(team => validTeams.includes(team));
@@ -52,19 +54,55 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // Handle leagues filter
+        if (leaguesParam) {
+            const requestedLeagues = leaguesParam.split(',').map(l => l.trim()).filter(l => l.length > 0);
+
+            if (requestedLeagues.length > 0) {
+                const availableLeagues = await sql`
+                    SELECT DISTINCT "League" 
+                    FROM sel.stats
+                    WHERE "League" IS NOT NULL
+                `;
+                const validLeagues = availableLeagues.map(row => row.League);
+                const filteredLeagues = requestedLeagues.filter(league => validLeagues.includes(league));
+
+                if (filteredLeagues.length > 0) {
+                    leagueFilter = filteredLeagues;
+                }
+            }
+        }
+
+        // Debug logging in development
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Filters:', { seasonFilter, teamFilter, leagueFilter });
+        }
+
         // Build and execute query based on which filters are active
-        if (seasonFilter && teamFilter) {
-            // Both filters
-            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter}) AND "Team" = ANY(${teamFilter}) AND "League" = 'PGEE'`;
+        if (seasonFilter && teamFilter && leagueFilter) {
+            // All three filters
+            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter}) AND "Team" = ANY(${teamFilter}) AND "League" = ANY(${leagueFilter})`;
+        } else if (seasonFilter && teamFilter) {
+            // Season and team filters
+            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter}) AND "Team" = ANY(${teamFilter})`;
+        } else if (seasonFilter && leagueFilter) {
+            // Season and league filters
+            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter}) AND "League" = ANY(${leagueFilter})`;
+        } else if (teamFilter && leagueFilter) {
+            // Team and league filters
+            data = await sql`SELECT * FROM sel.stats WHERE "Team" = ANY(${teamFilter}) AND "League" = ANY(${leagueFilter})`;
         } else if (seasonFilter) {
             // Only season filter
-            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter}) AND "League" = 'PGEE'`;
+            data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${seasonFilter})`;
         } else if (teamFilter) {
             // Only team filter
-            data = await sql`SELECT * FROM sel.stats WHERE "Team" = ANY(${teamFilter}) AND "League" = 'PGEE'`;
+            data = await sql`SELECT * FROM sel.stats WHERE "Team" = ANY(${teamFilter})`;
+        } else if (leagueFilter) {
+            // Only league filter
+            data = await sql`SELECT * FROM sel.stats WHERE "League" = ANY(${leagueFilter})`;
         } else {
             // No filters
-            data = await sql`SELECT * FROM sel.stats WHERE "League" = 'PGEE'`;
+            data = await sql`SELECT * FROM sel.stats`;
         }
 
         const res = NextResponse.json(data);
