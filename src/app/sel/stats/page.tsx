@@ -18,15 +18,6 @@ import { useTableParams } from '@/lib/useTableParams';
 import GenericTable from '@/components/ui/generic-table'
 
 function SelStatsContent() {
-    const { data: availableSeasonsRaw, loading: loadingSeasons } = useCachedFetch('/api/sel/stats/seasons') as { data: unknown, loading: boolean };
-    const { data: availableTeamsRaw, loading: loadingTeams } = useCachedFetch('/api/sel/stats/teams') as { data: unknown, loading: boolean };
-    const { data: availableLeaguesRaw, loading: loadingLeagues } = useCachedFetch('/api/sel/stats/leagues') as { data: unknown, loading: boolean };
-    // Ensure seasons are numbers (API returns them, but ensure type consistency)
-    const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) 
-        ? availableSeasonsRaw.map(s => typeof s === 'number' ? s : parseInt(String(s))).filter(n => !isNaN(n))
-        : [];
-    const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw.map(t => String(t)) : [];
-    const availableLeagues: string[] = Array.isArray(availableLeaguesRaw) ? availableLeaguesRaw.map(l => String(l)) : [];
     const {
         search,
         selectedSeasons,
@@ -39,6 +30,41 @@ function SelStatsContent() {
         setLeagues,
         setHeats,
     } = useTableParams();
+    
+    // Build seasons URL with league filter
+    const seasonsUrl = (() => {
+        const params = new URLSearchParams();
+        if (selectedLeagues.length > 0) {
+            params.set('leagues', selectedLeagues.join(','));
+        }
+        const query = params.toString();
+        return query ? `/api/sel/stats/seasons?${query}` : '/api/sel/stats/seasons';
+    })();
+    
+    const { data: availableSeasonsRaw, loading: loadingSeasons } = useCachedFetch(seasonsUrl) as { data: unknown, loading: boolean };
+    const { data: availableLeaguesRaw, loading: loadingLeagues } = useCachedFetch('/api/sel/stats/leagues') as { data: unknown, loading: boolean };
+    
+    // Build teams URL with season and league filters
+    const teamsUrl = (() => {
+        const params = new URLSearchParams();
+        if (selectedSeasons.length > 0) {
+            params.set('seasons', selectedSeasons.join(','));
+        }
+        if (selectedLeagues.length > 0) {
+            params.set('leagues', selectedLeagues.join(','));
+        }
+        const query = params.toString();
+        return query ? `/api/sel/stats/teams?${query}` : '/api/sel/stats/teams';
+    })();
+    
+    const { data: availableTeamsRaw, loading: loadingTeams } = useCachedFetch(teamsUrl) as { data: unknown, loading: boolean };
+    
+    // Ensure seasons are numbers (API returns them, but ensure type consistency)
+    const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) 
+        ? availableSeasonsRaw.map(s => typeof s === 'number' ? s : parseInt(String(s))).filter(n => !isNaN(n))
+        : [];
+    const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw.map(t => String(t)) : [];
+    const availableLeagues: string[] = Array.isArray(availableLeaguesRaw) ? availableLeaguesRaw.map(l => String(l)) : [];
 
     const handleSeasonsChange = setSeasons
     const handleTeamsChange = setTeams
