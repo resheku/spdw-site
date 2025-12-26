@@ -309,6 +309,14 @@ export function DataTable<TData extends Record<string, any>>({
         })
     }, [columns, rankedData])
 
+    // Hide League column if only one league is selected
+    const columnsWithLeagueVisibility = React.useMemo(() => {
+        if (selectedLeagues.length === 1) {
+            return columnsWithDynamicRank.filter(col => col.key !== 'League')
+        }
+        return columnsWithDynamicRank
+    }, [columnsWithDynamicRank, selectedLeagues])
+
     // Auto-hide these detailed numeric columns on small screens
     const autoHideKeys = React.useMemo(() => new Set([
         'I','II','III','IV','R','T','M','X','Warn'
@@ -316,7 +324,7 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Additional keys to hide on even smaller screens
     const extraHideKeys = React.useMemo(() => new Set([
-        'Match', 'Heats', 'Points', 'Bonus'
+        'Match', 'Heats', 'Points', 'Bonus', 'Home Avg.', 'Away Avg.'
     ]), [])
 
     const [isNarrow, setIsNarrow] = React.useState<boolean>(() => {
@@ -344,8 +352,8 @@ export function DataTable<TData extends Record<string, any>>({
     }, [])
 
     const finalColumns = React.useMemo(() => {
-        if (showHiddenColumns) return columnsWithDynamicRank
-        return columnsWithDynamicRank.filter((col) => {
+        if (showHiddenColumns) return columnsWithLeagueVisibility
+        return columnsWithLeagueVisibility.filter((col) => {
             try {
                 const keyStr = String((col as any).key)
                 if (isExtraNarrow && extraHideKeys.has(keyStr)) return false
@@ -355,12 +363,12 @@ export function DataTable<TData extends Record<string, any>>({
             }
             return true
         })
-    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+    }, [columnsWithLeagueVisibility, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
 
     // How many columns would be hidden by the responsive rules (regardless of current override)
     const possibleHiddenCount = React.useMemo(() => {
         let count = 0
-        columnsWithDynamicRank.forEach((col) => {
+        columnsWithLeagueVisibility.forEach((col) => {
             try {
                 const keyStr = String((col as any).key)
                 if (isExtraNarrow && extraHideKeys.has(keyStr)) {
@@ -373,7 +381,7 @@ export function DataTable<TData extends Record<string, any>>({
             }
         })
         return count
-    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
+    }, [columnsWithLeagueVisibility, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
 
     // --- CSV export helpers ---
     const extractText = (node: any): string => {
