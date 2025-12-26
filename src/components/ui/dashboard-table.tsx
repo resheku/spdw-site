@@ -55,7 +55,9 @@ export function DashboardTable({ title, data, columns, isLoading = false, classN
                 let isHighlight = false;
                 if (highlightSeason) {
                   if (row["Season"] !== undefined) {
-                    isHighlight = row["Season"] === highlightSeason;
+                    // Convert to number for comparison since DB returns strings
+                    const rowSeason = typeof row["Season"] === 'string' ? parseInt(row["Season"]) : row["Season"];
+                    isHighlight = rowSeason === highlightSeason;
                   } else if (row["Date"] && typeof row["Date"] === "string") {
                     // Try to extract year from Date (format: YYYY-MM-DD or similar)
                     const year = parseInt(row["Date"].slice(0, 4));

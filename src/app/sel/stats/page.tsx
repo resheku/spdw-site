@@ -20,8 +20,11 @@ import GenericTable from '@/components/ui/generic-table'
 function SelStatsContent() {
     const { data: availableSeasonsRaw, loading: loadingSeasons } = useCachedFetch('/api/sel/stats/seasons') as { data: unknown, loading: boolean };
     const { data: availableTeamsRaw, loading: loadingTeams } = useCachedFetch('/api/sel/stats/teams') as { data: unknown, loading: boolean };
-    const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) ? availableSeasonsRaw : [];
-    const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw : [];
+    // Ensure seasons are numbers (API returns them, but ensure type consistency)
+    const availableSeasons: number[] = Array.isArray(availableSeasonsRaw) 
+        ? availableSeasonsRaw.map(s => typeof s === 'number' ? s : parseInt(String(s))).filter(n => !isNaN(n))
+        : [];
+    const availableTeams: string[] = Array.isArray(availableTeamsRaw) ? availableTeamsRaw.map(t => String(t)) : [];
     const {
         search,
         selectedSeasons,

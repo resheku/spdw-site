@@ -8,7 +8,7 @@ export async function GET() {
         const data = await sql`
             SELECT DISTINCT "Season" 
             FROM sel.stats
-            WHERE "Season" IS NOT NULL 
+            WHERE "Season" IS NOT NULL AND "League" = 'PGEE'
             ORDER BY "Season" DESC
         `;
 

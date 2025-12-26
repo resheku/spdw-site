@@ -7,7 +7,7 @@ export async function GET() {
         const result = await sql`
             SELECT DISTINCT "Team" 
             FROM sel.stats
-            WHERE "Team" IS NOT NULL
+            WHERE "Team" IS NOT NULL AND "League" = 'PGEE'
             ORDER BY "Team" ASC
         `;
 
