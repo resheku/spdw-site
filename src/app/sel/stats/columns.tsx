@@ -36,6 +36,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         ),
         sortable: false,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => {
             return (
                 <div className="text-right pr-2">
@@ -55,6 +56,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         name: "Team",
         sortable: true,
         resizable: true,
+        width: 60,
     },
     {
         key: "Average",
@@ -62,6 +64,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 75,
         renderCell: ({ row }) => {
             const value = row.Average;
             return (
@@ -77,6 +80,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 75,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.Match ?? ''}</div>,
     },
     {
@@ -85,6 +89,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 60,
         renderCell: ({ row }) => {
             const value = row.Heats;
             return (
@@ -98,6 +103,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 60,
         renderCell: ({ row }) => {
             const value = row.Points;
             return (
@@ -111,6 +117,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 60,
         renderCell: ({ row }) => {
             const value = row.Bonus;
             return (
@@ -124,6 +131,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 70,
         renderCell: ({ row }) => {
             const value = row["Home Avg."];
             return (
@@ -137,6 +145,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 70,
         renderCell: ({ row }) => {
             const value = row["Away Avg."];
             return (
@@ -150,6 +159,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.I ?? ''}</div>,
     },
     {
@@ -158,6 +168,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.II ?? ''}</div>,
     },
     {
@@ -166,6 +177,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.III ?? ''}</div>,
     },
     {
@@ -174,6 +186,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.IV ?? ''}</div>,
     },
     {
@@ -182,6 +195,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.R ?? ''}</div>,
     },
     {
@@ -190,6 +204,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.T ?? ''}</div>,
     },
     {
@@ -198,6 +213,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.M ?? ''}</div>,
     },
     {
@@ -206,6 +222,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 45,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.X ?? ''}</div>,
     },
     {
@@ -214,6 +231,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 55,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.Warn ?? ''}</div>,
     },
     {
@@ -222,6 +240,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 70,
         renderCell: ({ row }) => {
             const value = row["Max Speed"];
             return (
@@ -235,6 +254,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         sortable: true,
         sortDescendingFirst: true,
         resizable: true,
+        width: 70,
         renderCell: ({ row }) => <div className="text-right pr-2">{row.Season ?? ''}</div>,
     },
     {
@@ -242,5 +262,6 @@ export const columns: Column<Stat & { rank: number }>[] = [
         name: "League",
         sortable: true,
         resizable: true,
+        width: 70,
     },
 ]
