@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             if (teamValue) {
                 // Split by "/" and add each team separately
                 const individualTeams = teamValue.split('/').map((t: string) => t.trim());
-                individualTeams.forEach(team => teamSet.add(team));
+                individualTeams.forEach((team: string) => teamSet.add(team));
             }
         });
 
