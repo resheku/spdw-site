@@ -4,16 +4,15 @@ import { getSecondsUntilNext10PMUTC } from '@/lib/cache-headers';
 
 export async function GET() {
     try {
-
-        const data = await sql`
-            SELECT DISTINCT "Season" 
+        const result = await sql`
+            SELECT DISTINCT "League" 
             FROM sel.stats
-            WHERE "Season" IS NOT NULL AND "League" = 'PGEE'
-            ORDER BY "Season" DESC
+            WHERE "League" IS NOT NULL
+            ORDER BY "League" ASC
         `;
 
-        const seasons = data.map(row => row.Season);
-        const res = NextResponse.json(seasons);
+        const leagues = result.map(row => row.League);
+        const res = NextResponse.json(leagues);
         const sMaxAge = getSecondsUntilNext10PMUTC();
         res.headers.set(
             'Cache-Control',
@@ -24,7 +23,7 @@ export async function GET() {
         console.error('Database query failed:', error);
         return NextResponse.json(
             {
-                error: 'Failed to fetch seasons data',
+                error: 'Failed to fetch leagues data',
                 details: process.env.NODE_ENV === 'development' ? error : undefined
             },
             { status: 500 }

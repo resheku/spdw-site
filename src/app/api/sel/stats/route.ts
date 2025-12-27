@@ -7,74 +7,81 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const seasonsParam = searchParams.get('season');
         const teamsParam = searchParams.get('team');
+        const leaguesParam = searchParams.get('league');
 
         let data: any[];
 
         // Build WHERE conditions based on filters
-        let whereConditions: string[] = [];
-        let queryParams: any[] = [];
+        let seasonFilter: number[] | null = null;
+        let teamFilter: string[] | null = null;
+        let leagueFilter: string[] | null = null;
 
         // Handle seasons filter
         if (seasonsParam) {
             const requestedSeasons = seasonsParam.split(',').map(s => parseInt(s.trim())).filter(s => !isNaN(s));
-
             if (requestedSeasons.length > 0) {
-                const availableSeasons = await sql`
-                    SELECT DISTINCT "Season" 
-                    FROM sel.stats
-                    WHERE "Season" IS NOT NULL
-                `;
-                const validSeasons = availableSeasons.map(row => row.Season);
-                const filteredSeasons = requestedSeasons.filter(season => validSeasons.includes(season));
-
-                if (filteredSeasons.length > 0) {
-                    whereConditions.push(`"Season" = ANY($${queryParams.length + 1})`);
-                    queryParams.push(filteredSeasons);
-                }
+                seasonFilter = requestedSeasons;
             }
         }
 
         // Handle teams filter
         if (teamsParam) {
             const requestedTeams = teamsParam.split(',').map(t => t.trim()).filter(t => t.length > 0);
-
             if (requestedTeams.length > 0) {
-                const availableTeams = await sql`
-                    SELECT DISTINCT "Team" 
-                    FROM sel.stats
-                    WHERE "Team" IS NOT NULL
-                `;
-                const validTeams = availableTeams.map(row => row.Team);
-                const filteredTeams = requestedTeams.filter(team => validTeams.includes(team));
-
-                if (filteredTeams.length > 0) {
-                    whereConditions.push(`"Team" = ANY($${queryParams.length + 1})`);
-                    queryParams.push(filteredTeams);
-                }
+                teamFilter = requestedTeams;
             }
         }
 
-        // Build and execute query
-        if (whereConditions.length > 0) {
-            if (queryParams.length === 1) {
-                // Single filter condition
-                if (seasonsParam && !teamsParam) {
-                    data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]})`;
-                } else if (teamsParam && !seasonsParam) {
-                    data = await sql`SELECT * FROM sel.stats WHERE "Team" = ANY(${queryParams[0]})`;
-                } else {
-                    // Both filters
-                    data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
-                }
-            } else if (queryParams.length === 2) {
-                // Both season and team filters
-                data = await sql`SELECT * FROM sel.stats WHERE "Season" = ANY(${queryParams[0]}) AND "Team" = ANY(${queryParams[1]})`;
-            } else {
-                data = await sql`SELECT * FROM sel.stats`;
+        // Handle leagues filter
+        if (leaguesParam) {
+            const requestedLeagues = leaguesParam.split(',').map(l => l.trim()).filter(l => l.length > 0);
+            if (requestedLeagues.length > 0) {
+                leagueFilter = requestedLeagues;
             }
-        } else {
-            data = await sql`SELECT * FROM sel.stats`;
         }
+
+        // Debug logging in development
+        if (process.env.NODE_ENV === 'development') {
+            console.log('Filters:', { seasonFilter, teamFilter, leagueFilter });
+        }
+
+        // Build query with dynamic WHERE conditions
+        let query = 'SELECT * FROM sel.stats WHERE 1=1';
+        const params: any[] = [];
+        let paramIndex = 1;
+        
+        if (seasonFilter) {
+            query += ` AND "Season" = ANY($${paramIndex})`;
+            params.push(seasonFilter);
+            paramIndex++;
+        }
+        
+        if (leagueFilter) {
+            query += ` AND "League" = ANY($${paramIndex})`;
+            params.push(leagueFilter);
+            paramIndex++;
+        }
+        
+        if (teamFilter) {
+            // For team filtering, match if the Team column contains any of the selected teams
+            // This handles cases like "LOD/TAR" when filtering by "LOD" or "TAR"
+            const teamConditions = teamFilter.map(team => {
+                const conditions = [
+                    `"Team" = $${paramIndex}`,
+                    `"Team" LIKE $${paramIndex + 1}`,
+                    `"Team" LIKE $${paramIndex + 2}`,
+                    `"Team" LIKE $${paramIndex + 3}`
+                ].join(' OR ');
+                params.push(team, team + '/%', '%/' + team, '%/' + team + '/%');
+                paramIndex += 4;
+                return `(${conditions})`;
+            }).join(' OR ');
+            
+            query += ` AND (${teamConditions})`;
+        }
+        
+        // Execute query
+        data = await sql.unsafe(query, params);
 
         const res = NextResponse.json(data);
         const sMaxAge = getSecondsUntilNext10PMUTC();
