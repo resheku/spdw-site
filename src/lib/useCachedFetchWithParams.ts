@@ -47,7 +47,12 @@ export function useCachedFetchWithParams(url: string) {
         // Scope cache by apiPath + other params (excluding season)
         const paramsWithoutSeason = new URLSearchParams(params.toString())
         paramsWithoutSeason.delete('season')
-        const scopeKey = `${apiPath}|${paramsWithoutSeason.toString()}`
+        // Sort params to ensure consistent cache keys regardless of parameter order
+        const sortedParams = Array.from(paramsWithoutSeason.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&')
+        const scopeKey = `${apiPath}|${sortedParams}`
         const cacheKey = `seasonCache:${scopeKey}`
 
         const cachedStr = localStorage.getItem(cacheKey)

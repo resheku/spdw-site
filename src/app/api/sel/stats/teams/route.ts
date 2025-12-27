@@ -50,7 +50,20 @@ export async function GET(request: NextRequest) {
 
         const result = await query;
 
-        const teams = result.map(row => row.Team);
+        // Split combined team values (e.g., "LOD/TAR" becomes ["LOD", "TAR"])
+        // and create a unique set of individual teams
+        const teamSet = new Set<string>();
+        result.forEach(row => {
+            const teamValue = row.Team;
+            if (teamValue) {
+                // Split by "/" and add each team separately
+                const individualTeams = teamValue.split('/').map((t: string) => t.trim());
+                individualTeams.forEach(team => teamSet.add(team));
+            }
+        });
+
+        // Convert set to sorted array
+        const teams = Array.from(teamSet).sort();
         const res = NextResponse.json(teams);
         const sMaxAge = getSecondsUntilNext10PMUTC();
         res.headers.set(

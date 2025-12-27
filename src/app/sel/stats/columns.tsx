@@ -56,7 +56,7 @@ export const columns: Column<Stat & { rank: number }>[] = [
         name: "Team",
         sortable: true,
         resizable: true,
-        width: 60,
+        width: 85,
     },
     {
         key: "Average",
