@@ -26,6 +26,9 @@ interface DataTableProps<TData> {
     availableTeams: string[]
     selectedTeams: string[]
     onTeamsChange: (teams: string[]) => void
+    availableLeagues: string[]
+    selectedLeagues: string[]
+    onLeaguesChange: (leagues: string[]) => void
     selectedHeatsRange: number[]
     onHeatsRangeChange: (heatsRange: number[]) => void
     isLoading?: boolean
@@ -40,6 +43,9 @@ export function DataTable<TData extends Record<string, any>>({
     availableTeams,
     selectedTeams,
     onTeamsChange,
+    availableLeagues,
+    selectedLeagues,
+    onLeaguesChange,
     selectedHeatsRange,
     onHeatsRangeChange,
     isLoading = false,
@@ -303,6 +309,14 @@ export function DataTable<TData extends Record<string, any>>({
         })
     }, [columns, rankedData])
 
+    // Hide League column if only one league is selected
+    const columnsWithLeagueVisibility = React.useMemo(() => {
+        if (selectedLeagues.length === 1) {
+            return columnsWithDynamicRank.filter(col => col.key !== 'League')
+        }
+        return columnsWithDynamicRank
+    }, [columnsWithDynamicRank, selectedLeagues])
+
     // Auto-hide these detailed numeric columns on small screens
     const autoHideKeys = React.useMemo(() => new Set([
         'I','II','III','IV','R','T','M','X','Warn'
@@ -310,7 +324,7 @@ export function DataTable<TData extends Record<string, any>>({
 
     // Additional keys to hide on even smaller screens
     const extraHideKeys = React.useMemo(() => new Set([
-        'Match', 'Heats', 'Points', 'Bonus'
+        'Match', 'Heats', 'Points', 'Bonus', 'Home Avg.', 'Away Avg.'
     ]), [])
 
     const [isNarrow, setIsNarrow] = React.useState<boolean>(() => {
@@ -338,8 +352,8 @@ export function DataTable<TData extends Record<string, any>>({
     }, [])
 
     const finalColumns = React.useMemo(() => {
-        if (showHiddenColumns) return columnsWithDynamicRank
-        return columnsWithDynamicRank.filter((col) => {
+        if (showHiddenColumns) return columnsWithLeagueVisibility
+        return columnsWithLeagueVisibility.filter((col) => {
             try {
                 const keyStr = String((col as any).key)
                 if (isExtraNarrow && extraHideKeys.has(keyStr)) return false
@@ -349,12 +363,12 @@ export function DataTable<TData extends Record<string, any>>({
             }
             return true
         })
-    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
+    }, [columnsWithLeagueVisibility, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys, showHiddenColumns])
 
     // How many columns would be hidden by the responsive rules (regardless of current override)
     const possibleHiddenCount = React.useMemo(() => {
         let count = 0
-        columnsWithDynamicRank.forEach((col) => {
+        columnsWithLeagueVisibility.forEach((col) => {
             try {
                 const keyStr = String((col as any).key)
                 if (isExtraNarrow && extraHideKeys.has(keyStr)) {
@@ -367,7 +381,7 @@ export function DataTable<TData extends Record<string, any>>({
             }
         })
         return count
-    }, [columnsWithDynamicRank, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
+    }, [columnsWithLeagueVisibility, isNarrow, isExtraNarrow, autoHideKeys, extraHideKeys])
 
     // --- CSV export helpers ---
     const extractText = (node: any): string => {
@@ -460,6 +474,18 @@ export function DataTable<TData extends Record<string, any>>({
 
     const clearAllTeams = () => {
         onTeamsChange([])
+    }
+
+    const handleLeagueToggle = (league: string) => {
+        const newSelectedLeagues = selectedLeagues.includes(league)
+            ? selectedLeagues.filter(l => l !== league)
+            : [...selectedLeagues, league]
+
+        onLeaguesChange(newSelectedLeagues)
+    }
+
+    const clearAllLeagues = () => {
+        onLeaguesChange([])
     }
 
     // If the table data refreshes (e.g. after a fetch), reapply caret position
@@ -573,6 +599,59 @@ export function DataTable<TData extends Record<string, any>>({
                                     }}
                                 >
                                     {team}
+                                </button>
+                            </div>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            Leagues ({
+                                selectedLeagues.length === 0
+                                    ? 'All'
+                                    : selectedLeagues.length === 1
+                                        ? selectedLeagues[0]
+                                        : selectedLeagues.length
+                            })
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                        <DropdownMenuLabel>Filter by League</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {selectedLeagues.length > 0 && (
+                            <>
+                                <DropdownMenuCheckboxItem
+                                    className="text-red-600"
+                                    checked={false}
+                                    onCheckedChange={clearAllLeagues}
+                                >
+                                    Clear all leagues
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
+                        {availableLeagues.map((league) => (
+                            <div
+                                key={league}
+                                className="relative flex cursor-default items-center rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selectedLeagues.includes(league)}
+                                    onChange={() => handleLeagueToggle(league)}
+                                    className="mr-2 size-4 cursor-pointer accent-primary"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                    className="underline underline-offset-2 hover:no-underline text-left flex-1"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onLeaguesChange([league]);
+                                    }}
+                                >
+                                    {league}
                                 </button>
                             </div>
                         ))}

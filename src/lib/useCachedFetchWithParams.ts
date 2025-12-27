@@ -15,7 +15,11 @@ type SeasonCache = {
     bySeason: { [season: string]: any[] }
     allLoaded: boolean
     expiry: number
+    version: number
 }
+
+// Increment this version when cache structure changes or to force cache refresh
+const CACHE_VERSION = 2;
 
 export function useCachedFetchWithParams(url: string) {
     const [data, setData] = useState<any>(null);
@@ -47,7 +51,12 @@ export function useCachedFetchWithParams(url: string) {
         // Scope cache by apiPath + other params (excluding season)
         const paramsWithoutSeason = new URLSearchParams(params.toString())
         paramsWithoutSeason.delete('season')
-        const scopeKey = `${apiPath}|${paramsWithoutSeason.toString()}`
+        // Sort params to ensure consistent cache keys regardless of parameter order
+        const sortedParams = Array.from(paramsWithoutSeason.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&')
+        const scopeKey = `${apiPath}|${sortedParams}`
         const cacheKey = `seasonCache:${scopeKey}`
 
         const cachedStr = localStorage.getItem(cacheKey)
@@ -55,12 +64,15 @@ export function useCachedFetchWithParams(url: string) {
         if (cachedStr) {
             try {
                 const parsed = JSON.parse(cachedStr) as SeasonCache
-                if (parsed.expiry && Date.now() < parsed.expiry) {
-                    cache = parsed
-                } else {
+                // Invalidate cache if version doesn't match or expired
+                if (parsed.version !== CACHE_VERSION || !parsed.expiry || Date.now() >= parsed.expiry) {
                     localStorage.removeItem(cacheKey)
+                } else {
+                    cache = parsed
                 }
-            } catch { }
+            } catch {
+                localStorage.removeItem(cacheKey)
+            }
         }
 
         const dedupe = (arr: any[]) => {
@@ -106,7 +118,7 @@ export function useCachedFetchWithParams(url: string) {
                     if (!res.ok) throw new Error('Network error')
                     const json = await res.json()
                     if (!isMounted) return
-                    const newCache: SeasonCache = { bySeason: {}, allLoaded: true, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 }
+                    const newCache: SeasonCache = { bySeason: {}, allLoaded: true, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000, version: CACHE_VERSION }
                     if (Array.isArray(json)) {
                         for (const row of json) {
                             const s = String(row?.Season ?? 'all')
@@ -137,7 +149,7 @@ export function useCachedFetchWithParams(url: string) {
                 const json = await res.json()
                 if (!isMounted) return
 
-                const newCache: SeasonCache = cache ? { bySeason: { ...(cache.bySeason || {}) }, allLoaded: cache.allLoaded, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 } : { bySeason: {}, allLoaded: false, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000 }
+                const newCache: SeasonCache = cache ? { bySeason: { ...(cache.bySeason || {}) }, allLoaded: cache.allLoaded, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000, version: CACHE_VERSION } : { bySeason: {}, allLoaded: false, expiry: Date.now() + getSecondsUntilNext10PMUTC() * 1000, version: CACHE_VERSION }
                 if (Array.isArray(json)) {
                     for (const row of json) {
                         const s = String(row?.Season ?? 'all')

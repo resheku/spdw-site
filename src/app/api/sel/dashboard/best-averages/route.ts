@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
                     "Team",
                     "Average"
                 FROM sel.stats 
-                WHERE "Season" = ${seasonNumber}
+                WHERE "Season" = ${seasonNumber} AND "League" = 'PGEE'
                 ORDER BY "Average" DESC, "Points" DESC, "Heats" DESC, "Name"
                 LIMIT ${limit}
             `;
@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
                         "Season",
                         COUNT(DISTINCT "Match") * 15 as team_available_heats
                     FROM sel.stats
+                    WHERE "League" = 'PGEE'
                     GROUP BY "Team", "Season"
                 ),
                 rider_stats AS (
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
                         (s."Heats"::DECIMAL / th.team_available_heats) as heat_percentage
                     FROM sel.stats s
                     JOIN team_heats th ON s."Team" = th."Team" AND s."Season" = th."Season"
-                    WHERE (s."Heats"::DECIMAL / th.team_available_heats) >= 0.5
+                    WHERE s."League" = 'PGEE' AND (s."Heats"::DECIMAL / th.team_available_heats) >= 0.5
                 )
                 SELECT 
                     ROW_NUMBER() OVER (ORDER BY "Average" DESC, "Points" DESC, "Heats" DESC, "Name") as "No",
