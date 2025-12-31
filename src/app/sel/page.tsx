@@ -33,9 +33,12 @@ export default function SELPage() {
   const [maxSpeedsAllTime, setMaxSpeedsAllTime] = useState<any[] | null>(null)
   const [loadingMaxSpeedsAllTime, setLoadingMaxSpeedsAllTime] = useState<boolean>(false)
 
-  const isLoading = loadingSeasons || loadingTelemetrySeasons || loadingBestAveragesThisSeason || loadingBestAveragesAllTime || loadingMaxSpeedsThisSeason || loadingMaxSpeedsAllTime;
+  // Separate loading states
+  const isStatsLoading = loadingSeasons || loadingTelemetrySeasons || loadingBestAveragesThisSeason || loadingBestAveragesAllTime;
+  const isTopSpeedLoading = loadingMaxSpeedsThisSeason || loadingMaxSpeedsAllTime;
 
   // Lazy fetch lower-priority max speed tables after top tables load
+  // Only load top speed tables after stats tables are loaded
   useEffect(() => {
     let cancelled = false
     const getSecondsUntilNext10PMUTC = () => {
@@ -111,13 +114,13 @@ export default function SELPage() {
       }
     }
 
-    // start fetching when at least one top table is loaded (prioritize perceived speed)
-    if (!loadingBestAveragesThisSeason && !loadingBestAveragesAllTime) {
+    // Only start fetching top speed tables after stats tables are loaded
+    if (!isStatsLoading) {
       fetchMaxSpeeds()
     }
 
-    return () => { cancelled = true }
-  }, [currentSeason, loadingBestAveragesThisSeason, loadingBestAveragesAllTime])
+    return () => { cancelled = true; }
+  }, [currentSeason, isStatsLoading])
   // Compute season range and max speed range from cached data
   let seasonRange = '';
   if (Array.isArray(seasons) && (seasons as any[]).length > 0) {
@@ -160,12 +163,12 @@ export default function SELPage() {
         </Breadcrumb>
 
         <div className="space-y-8 w-full">
-            <h2 className="text-2xl font-bold mb-2">
+          <h2 className="text-2xl font-bold mb-2">
             <Link href={`/sel/stats?season=${currentSeason}&league=PGEE`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)}>stats</Link>
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <DashboardTable
-                titleElement={
+              titleElement={
                 <Link href={`/sel/stats?season=${currentSeason}&league=PGEE`} className="spdw-link" onMouseEnter={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)} onFocus={() => prefetchStatsForLink(`/sel/stats?season=${currentSeason}&league=PGEE`)}>
                   {currentSeason ? `${currentSeason}` : "Averages"}
                 </Link>
@@ -173,7 +176,7 @@ export default function SELPage() {
               title={currentSeason ? `${currentSeason}` : "Averages"}
               data={mapNoToEmptyKey(Array.isArray(bestAveragesThisSeason) ? bestAveragesThisSeason : [])}
               columns={['', 'Name', 'Team', 'Average']}
-              isLoading={isLoading}
+              isLoading={isStatsLoading}
             />
 
             {/* //TODO: update link to follow same rule as query and include the no heats filter */}
@@ -186,7 +189,7 @@ export default function SELPage() {
               title={seasonRange ? `${seasonRange}` : "All Time"}
               data={mapNoToEmptyKey(Array.isArray(bestAveragesAllTime) ? bestAveragesAllTime : [])}
               columns={['', 'Name', 'Team', 'Season', 'Average']}
-              isLoading={isLoading}
+              isLoading={isStatsLoading}
               highlightSeason={currentSeason}
             />
           </div>
@@ -199,14 +202,14 @@ export default function SELPage() {
               title={currentSeason ? `${currentSeason}` : "Max Speed"}
               data={mapNoToEmptyKey(Array.isArray(maxSpeedsThisSeason) ? maxSpeedsThisSeason : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
-              isLoading={isLoading}
+              isLoading={isTopSpeedLoading || isStatsLoading}
             />
 
             <DashboardTable
               title={maxSpeedRange ? `${maxSpeedRange}` : "All Time"}
               data={mapNoToEmptyKey(Array.isArray(maxSpeedsAllTime) ? maxSpeedsAllTime : [])}
               columns={['', 'Name', 'Team', 'Speed', 'Track', 'Date']}
-              isLoading={isLoading}
+              isLoading={isTopSpeedLoading || isStatsLoading}
               highlightSeason={currentSeason}
             />
           </div>
